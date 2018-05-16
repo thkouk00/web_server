@@ -28,38 +28,47 @@ make_set()
 	let "f=($p/2)+1"
 	echo Q is $q F is $f
 	y=0
-	let "rr=${#setQ[@]}-1"
-	echo RR $rr
+	#let "rr=${#setQ[@]}-1"
+	#echo RR $rr
+	echo SETQ is
+	echo ${setQ[@]}
 	for ((i=0;i<$q;i++))
 	do
-		let "rand=((0+ $RANDOM % (${#setQ[@]}-1)))"
+		let "rand=((0+ $RANDOM % ${#setQ[@]}))"
 		while [ -z "${setQ[$rand]}" ]
 		do
-			echo ${setQ[@]} 
-			let "rand=((0+ $RANDOM % (${#setQ[@]}-1)))"
+			echo LOOPA ${setQ[@]} 
+			let "rand=((0+ $RANDOM % ${#setQ[@]}))"
 		done
+		combined[$y]=${setQ[$rand]}
 		unset 'setQ[$rand]'
 		echo RANDQ IS $rand
-		combined[$y]=${setQ[$rand]}
+		echo ${combined[$y]} or ${setQ[$rand]}
 		((++y))
 	done
 	echo SETF ISS ${#setF[@]}
 	let "rr=${#setF[@]}"
 	echo \*\*RR $rr
-	echo HERE FINALLY ${setF[4]}
 	for ((i=0;i<$f;i++))
 	do
 		let "rand=((0+ $RANDOM % $rr))"
-		while [ -z "${setF[$rand]}" ]
-		do
-			#echo ${setF[@]} 
-			echo $rand
-			let "rand=((0+ $RANDOM % $rr))"
-			#exit 1
-		done
-		unset 'setF[$rand]'
+		if [ "$rr" -ne 1 ]; then
+			while [ -z "${setF[$rand]}" ]
+			do
+				#echo ${setF[@]} 
+				echo LOOP $rand
+				let "rand=((0+ $RANDOM % $rr))"
+				#exit 1
+			done
+			combined[$y]=${setF[$rand]}
+			unset 'setF[$rand]'
+		else
+			combined[$y]=${setF[$rand]}
+		fi
 		echo RANDF IS $rand
-		combined[$y]=${setF[$rand]}
+		# combined[$y]=${setF[$rand]}
+		# unset 'setF[$rand]'
+		echo ${combined[$y]}
 		((++y))
 	done
 	#randQ
@@ -132,12 +141,12 @@ do
 		((++counter))
 		#merge setF and setQ to one array
 		# compined=(${setF[@]} ${setQ[@]})
-		echo combined
+		echo combined ${#combined[@]}
 		for element in ${combined[@]}
 		do
 			echo $element
 		done
-		echo
+		#echo ${combined[0]}
 	done
 done
 
