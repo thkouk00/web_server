@@ -133,7 +133,7 @@ do
 		echo 
 	fi
 	names[${i}]=page$countW\_$RANDOM
-	echo ${names[${i}]}
+	#echo ${names[${i}]}
 	let "countP += 1"
 	#touch site$i/page$i\_$RANDOM.html
 done
@@ -142,7 +142,7 @@ done
 counter=0
 for ((i=0;i<$w;i++))
 do
-	echo \# Creating web site $i ...
+	echo "# Creating web site $i ..."
 	mkdir site$i
 	cd site$i
 	for ((y=0;y<$p;y++))
@@ -161,11 +161,11 @@ do
 		make_set ${names[$counter]}
 		#calculate m/f+q
 		let "package=$m/${#combined[@]}"
-		echo LINKS ${#combined[@]}
-		echo ${combined[@]}
+		# echo LINKS ${#combined[@]}
+		# echo ${combined[@]}
 		pVal=$k
 		#create html file
-		echo "#	Creating page ${names[$counter]}.html with $m lines starting at line $k"
+		echo "#   Creating page ${names[$counter]}.html with $m lines starting at line $k"
 		touch ${names[$counter]}.html
 		#html headers
 		echo "<!DOCTYPE html>" >> ${names[$counter]}.html
@@ -188,7 +188,7 @@ do
 				let "lineswritten = lineswritten + package + 1"
 				((--linesleft))
 			fi
-			echo "#	Adding link to ${root_dir}site${i}/${names[$counter]}.html"
+			echo "#   Adding link to ${root_dir}site${i}/${names[$counter]}.html"
 			echo '	<a href='${1}${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
 			((++combcounter))
 		done
@@ -196,6 +196,30 @@ do
 		echo "	</body>" >> ${names[$counter]}.html
 		echo "</html>" >> ${names[$counter]}.html
 		((++counter))
+		temporary=${names[$counter]}.html
 	done
 	cd ..
 done
+echo "# Done."
+
+pos=0
+for element in ${names[@]}
+do
+	#find all occurences of pageX as link in all files
+	var1=`grep -rnw ${root_dir} -e $element | wc -l`
+	tempid=`echo "$element" | grep -oP '^[^0-9]*\K[0-9]+'`
+	#find occurences of pageX in pageX.html
+	var2=`grep -e $element ${root_dir}site$tempid/$element.html | wc -l`
+	#see if there are other occurences except pageX.html
+	let "var=var1-var2"
+	if [ "${var}" -gt 0 ]; then
+		inlinks[$pos]=1
+		((++pos))
+	fi 
+done
+
+if [ "${#inlinks[@]}" -eq "${#names[@]}" ]; then
+	echo "# All pages have at least one incoming link"
+else
+	echo "# Not all pages have at least one in incoming link"
+fi
