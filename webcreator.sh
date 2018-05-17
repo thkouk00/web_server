@@ -4,7 +4,7 @@
 make_set()
 {
 	cur_site=$1
-	echo Received $cur_site
+	#echo Received $cur_site
 	#finds first number of string , site id
 	sid=`echo "$cur_site" | grep -oP '^[^0-9]*\K[0-9]+'`
 	setF=()
@@ -26,29 +26,33 @@ make_set()
 	done
 	let "q=($w/2)+1"
 	let "f=($p/2)+1"
-	echo Q is $q F is $f
+	#echo Q is $q F is $f
 	y=0
 	#let "rr=${#setQ[@]}-1"
 	#echo RR $rr
-	echo SETQ is
-	echo ${setQ[@]}
-	for ((i=0;i<$q;i++))
-	do
-		let "rand=((0+ $RANDOM % ${#setQ[@]}))"
-		while [ -z "${setQ[$rand]}" ]
+	#echo SETQ is
+	#echo ${setQ[@]}
+	if [ "$q" -ne 1 ]; then
+		for ((i=0;i<$q;i++))
 		do
-			echo LOOPA ${setQ[@]} 
 			let "rand=((0+ $RANDOM % ${#setQ[@]}))"
+			while [ -z "${setQ[$rand]}" ]
+			do
+				#echo LOOPA ${setQ[@]} 
+				let "rand=((0+ $RANDOM % ${#setQ[@]}))"
+			done
+			#pare ton arithmo tou
+			tmpid=`echo "${setQ[$rand]}" | grep -oP '^[^0-9]*\K[0-9]+'`
+			combined[$y]=site${tmpid}/${setQ[$rand]}
+			unset 'setQ[$rand]'
+			#cho RANDQ IS $rand
+			#echo ${combined[$y]} or ${setQ[$rand]}
+			((++y))
 		done
-		combined[$y]=${setQ[$rand]}
-		unset 'setQ[$rand]'
-		echo RANDQ IS $rand
-		echo ${combined[$y]} or ${setQ[$rand]}
-		((++y))
-	done
-	echo SETF ISS ${#setF[@]}
+	fi
+	#echo SETF ISS ${#setF[@]}
 	let "rr=${#setF[@]}"
-	echo \*\*RR $rr
+	#echo \*\*RR $rr
 	for ((i=0;i<$f;i++))
 	do
 		let "rand=((0+ $RANDOM % $rr))"
@@ -56,23 +60,26 @@ make_set()
 			while [ -z "${setF[$rand]}" ]
 			do
 				#echo ${setF[@]} 
-				echo LOOP $rand
+				#echo LOOP $rand
 				let "rand=((0+ $RANDOM % $rr))"
 				#exit 1
 			done
-			combined[$y]=${setF[$rand]}
+			combined[$y]=site${sid}/${setF[$rand]}
 			unset 'setF[$rand]'
-		else
-			combined[$y]=${setF[$rand]}
+		else									#if setF has only one element then
+			combined[$y]=${setF[0]}				#take the element
+			((++y))								#and 
+			combined[$y]=site${sid}/${cur_site}			#take page that we work on
+			break
 		fi
-		echo RANDF IS $rand
+		#echo RANDF IS $rand
 		# combined[$y]=${setF[$rand]}
 		# unset 'setF[$rand]'
-		echo ${combined[$y]}
+		#echo ${combined[$y]}
 		((++y))
 	done
 	#randQ
-	echo combined length ${#combined[@]}
+	#echo combined length ${#combined[@]}
 }
 
 
@@ -95,6 +102,7 @@ if [ "$(ls -A $root_dir)" ]; then
 fi
 #take rest of arguments
 text_file="$2"
+filelines=`cat $text_file`
 w=$3
 p=$4
 #check w , p if integers 
@@ -108,8 +116,8 @@ if ! [[ $p =~ $re ]]; then
 	exit 2
 fi
 #check for number of lines
-count=`wc -l <$text_file`
-if [ $count -lt 10000 ]; then
+countlines=`wc -l <$text_file`
+if [ $countlines -lt 10000 ]; then
 	echo Text has less than 10k lines
 	exit 3
 fi
@@ -134,82 +142,60 @@ done
 counter=0
 for ((i=0;i<$w;i++))
 do
+	echo \# Creating web site $i ...
 	mkdir site$i
+	cd site$i
 	for ((y=0;y<$p;y++))
 	do
+		#echo Work for w is $i and page ${names[$counter]}
+		#pwd
+		combcounter=0
+		#generate k , m
+		let "toplimit=${countlines}-2000"
+		k=`shuf -i 2-$toplimit -n 1`
+		m=`shuf -i 1001-1999 -n 1` 
+		# k=500
+		# m=1500
+		#echo K is  $k  M is $m
+		#give as argument page we work on
 		make_set ${names[$counter]}
-		((++counter))
-		#merge setF and setQ to one array
-		# compined=(${setF[@]} ${setQ[@]})
-		echo combined ${#combined[@]}
-		for element in ${combined[@]}
+		#calculate m/f+q
+		let "package=$m/${#combined[@]}"
+		echo LINKS ${#combined[@]}
+		echo ${combined[@]}
+		pVal=$k
+		#create html file
+		echo "#	Creating page ${names[$counter]}.html with $m lines starting at line $k"
+		touch ${names[$counter]}.html
+		#html headers
+		echo "<!DOCTYPE html>" >> ${names[$counter]}.html
+		echo "<html>" >> ${names[$counter]}.html
+		echo "	<body>" >> ${names[$counter]}.html
+		
+		lineswritten=0
+		let "linesleft=$m % ${#combined[@]}"
+		while [ "$lineswritten" -ne "$m" ]
 		do
-			echo $element
+			if [ "${linesleft}" -eq 0 ]; then
+				let "start=${pVal}+${lineswritten}"
+				let "end=${pVal}+${lineswritten}+(${package}-1)"
+				sed -n "${start},${end}p" $text_file >> ${names[$counter]}.html
+				let "lineswritten = lineswritten + package"
+			else			#if m mod (f+q) != 0 take one extra line in every loop 
+				let "start=${pVal}+${lineswritten}"
+				let "end=${pVal}+${lineswritten}+${package}"
+				sed -n "${start},${end}p" $text_file >> ${names[$counter]}.html
+				let "lineswritten = lineswritten + package + 1"
+				((--linesleft))
+			fi
+			echo "#	Adding link to ${root_dir}site${i}/${names[$counter]}.html"
+			echo '	<a href='${1}${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
+			((++combcounter))
 		done
-		#echo ${combined[0]}
+		#close html headers
+		echo "	</body>" >> ${names[$counter]}.html
+		echo "</html>" >> ${names[$counter]}.html
+		((++counter))
 	done
+	cd ..
 done
-
-
-# echo SETF
-# for element in ${setF[@]}
-# do
-# 	echo $element
-# done
-
-# #put 1-35 lines to html site
-# echo "<!DOCTYPE html>
-# <html>
-# 	<body>" >> ${names[0]}.html
-# sed -n 1,35p $text_file >> ${names[0]}.html 
-# touch ${names[10]}.html
-# #mkdir site0
-# echo "Kalispera sas" >> ${names[10]}.html
-# #mv ${names[10]}.html site0
-# # if [  ]; then
-
-# # fi
-# #rand num between 1-4
-# #echo $((1+ RANDOM %4))
-# echo ${names[44]} | grep -oP '^[^0-9]*\K[0-9]+'
-# echo '	<a href='${names[10]}.html' >test</a>' >> ${names[0]}.html
-# echo "	</body>
-# </html>" >> ${names[0]}.html
-# array[0]='randy'
-# array[1]='orton'
-# array[2]='raaas'
-# echo Try to delete array
-# echo ${#array[@]}
-# array=()
-# echo ${#array[@]}
-# echo array deleted
-# #delete=(randy)
-# #echo ${array[@]/$delete}
-# #array=("${array[@]:1}")
-# echo ${array[@]}
-# unset 'array[1]'
-# echo ${array[@]}
-# echo ${array[1]}
-# # if [ -z "${array[0]}" ]; then
-# # 	echo NULL re
-# # fi
-# i=0
-# for element in ${array[@]}
-# do
-# 	array2[$i]=$element
-# 	((++i))
-# done
-# # echo ${array[0]}
-# # echo ${array[1]}
-# # echo ${array[2]}
-# echo ${array2[@]}
-# echo ${array2[1]}
-# echo ${#array2[@]}
-# make_set ${names[@]}
-# echo After functionn
-# for element in ${names[@]}
-# do
-# 	echo $element
-# done
-# echo LEENGTH IS ${#names[@]}
-# echo ${names[4]}
