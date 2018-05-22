@@ -24,6 +24,8 @@ struct arg_struct
 	int arg2;
 };
 
+void* child2(void* nsock);
+
 void* worker(void* arg);
 void* producer(void* args);
 
@@ -51,10 +53,11 @@ int main(int argc , char* argv[])
 	int i , sockopt_val=1;
 	int nthr, port, command_port, sock, c_sock, newsock, command_sock;
 	char *root_dir;
-	socklen_t clientlen, cmdlen;
-	struct sockaddr_in server, client, cmd;
+	socklen_t cmdlen;
+	// struct sockaddr_in server, client, cmd;
+	struct sockaddr_in server , cmd;
 	struct sockaddr *serverptr = (struct sockaddr*)&server ;
-	struct sockaddr *clientptr= (struct sockaddr*)&client ;
+	// struct sockaddr *clientptr= (struct sockaddr*)&client ;
 	struct sockaddr *cmdptr= (struct sockaddr*)&cmd;
 	struct hostent *rem;
 	// fd_set set, readfds;
@@ -86,18 +89,14 @@ int main(int argc , char* argv[])
 	pthread_mutex_init(&mtx, 0);
 	pthread_cond_init(&cond_nonempty, 0);
 	pthread_cond_init(&cond_nonfull, 0);
-
-	//call function , so thread can run code for command_socket
-	// pthread_t t1;
-	// pthread_create(&t1, NULL, take_command, NULL);
 	
 
 	//create socket
 	if ((sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
 		perror("Failed to create socket");
 
-	// if ((c_sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
-	// 	perror("Failed to create socket");	
+	if ((c_sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
+		perror("Failed to create socket");	
 
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &sockopt_val, sizeof(int)) == -1)
 	{
@@ -105,11 +104,11 @@ int main(int argc , char* argv[])
 		exit(1);
 	}
 
-	// if (setsockopt(c_sock, SOL_SOCKET, SO_REUSEADDR, &sockopt_val, sizeof(int)) == -1)
-	// {
-	// 	perror("Failed: setsockopt");
-	// 	exit(1);
-	// }
+	if (setsockopt(c_sock, SOL_SOCKET, SO_REUSEADDR, &sockopt_val, sizeof(int)) == -1)
+	{
+		perror("Failed: setsockopt");
+		exit(1);
+	}
 
 	server.sin_family = AF_INET;					//internet domain
 	server.sin_addr.s_addr = htonl(INADDR_ANY);		//any ip address
@@ -118,17 +117,17 @@ int main(int argc , char* argv[])
 	if (bind(sock,serverptr,sizeof(server)) == -1)
 		perror("Failed to bind socket to port");
 
-	// server.sin_port = htons(command_port);	
-	// if (bind(c_sock,serverptr,sizeof(server)) == -1)
-	// 	perror("Failed to bind socket to port");	
+	server.sin_port = htons(command_port);	
+	if (bind(c_sock,serverptr,sizeof(server)) == -1)
+		perror("Failed to bind socket to port");	
 	
 	//listen for connections
 	if (listen(sock,128) == -1)
 		perror("Failed: listen");
 
-	// if (listen(c_sock,1) == -1)
-	// 	perror("Failed: listen");
-	// printf("Listening for connections to port %d\n", port);
+	if (listen(c_sock,1) == -1)
+		perror("Failed: listen");
+	printf("Listening for connections to port %d\n", port);
 	
 	FD_ZERO(&set);
 	FD_SET(sock, &set);
@@ -145,51 +144,16 @@ int main(int argc , char* argv[])
 	//create one thread for inserting fd to buff
 	pthread_create(&prod, 0, worker, (void*)&arg_strct);
 
-	// for (int i=0;i<4;i++)
-	// 	pthread_join(tid[i], NULL);
 	
-	// int err,status;
-	// pthread_t thr;
-	// int highfd, res;
-	
-	// while(1)
-	// {
-	// 	readfds = set;
-	// 	// FD_ZERO(&readfds);
-	// 	// FD_SET(sock, &readfds);
-	// 	// FD_SET(c_sock, &readfds);
+	while (1)
+	{	
+		cmdlen = sizeof(cmd);
+		if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
+			perror("Failed: accept for command port");
 
-	// 	if (sock > c_sock)
-	// 		highfd = sock;
-	// 	else
-	// 		highfd = c_sock;
+		child2(&command_sock);
+	}	
 
-	// 	clientlen = sizeof(client);
-	// 	res = select(highfd+1, &readfds, NULL, NULL, NULL);
-	// 	if (res < 0)
-	// 		printf("ERROR select\n");
-	// 	else if (res > 0)
-	// 	{
-	// 		if (FD_ISSET(c_sock, &readfds))
-	// 		{
-	// 			//accept connection 
-	// 			//read from command line and display it
-	// 			cmdlen = sizeof(cmd);
-	// 			if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
-	// 				perror("Failed: accept for command port");
-	// 			pthread_create(&t1, NULL, child2, &command_sock);
-	// 		}
-	// 		else
-	// 		{
-	// 			//go to upper case
-	// 			//accept connection
-	// 			if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
-	// 				perror("Failed: accept");
-
-	// 			err=pthread_create(&thr, NULL, (void*)child_server, &newsock);
-	// 		}
-	// 	}
-	// }
 
 	for (int i=0;i<4;i++)
 		pthread_join(tid[i], NULL);
@@ -203,8 +167,6 @@ int main(int argc , char* argv[])
 void* worker(void* arg)
 {
 	int *sock = arg;
-	// FD_ZERO(&set);
-	// FD_SET(*sock, &set);
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
@@ -238,49 +200,21 @@ void* producer(void* args)
 
 	while(1)
 	{
-		// readfds = set;
-		// if (sock > c_sock)
-		// 	highfd = sock;
-		// else
-		// 	highfd = c_sock;
+		
+		pthread_mutex_lock(&mtx);
+		while (count == 4)
+			pthread_cond_wait(&cond_nonfull, &mtx);
+		if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
+			perror("Failed: accept");
 
-		// clientlen = sizeof(client);
-		// res = select(highfd+1, &readfds, NULL, NULL, NULL);
-		// if (res < 0)
-		// 	printf("ERROR select\n");
-		// else if (res > 0)
-		// {
-			// if (FD_ISSET(c_sock, &readfds))
-			// {
-			// 	//accept connection 
-			// 	//read from command line and display it
-			// 	cmdlen = sizeof(cmd);
-			// 	if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
-			// 		perror("Failed: accept for command port");
-			// 	pthread_create(&t1, NULL, child2, &command_sock);
-			// }
-			// else
-			// if (FD_ISSET(sock, &readfds))
-			// {
-				//go to upper case
-				//accept connection
-				pthread_mutex_lock(&mtx);
-				while (count == 4)
-					pthread_cond_wait(&cond_nonfull, &mtx);
-				if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
-					perror("Failed: accept");
-
-				connections[pos] = newsock;
-				printf("New insertion %d at pos %d\n", newsock,pos);
-				printf("Eimai %ld\n", pthread_self());
-				pos++;
-				count++;
-				pthread_cond_broadcast(&cond_nonempty);
-				pthread_mutex_unlock(&mtx);
-				sleep(5);
-			
-			// }
-		// }
+		connections[pos] = newsock;
+		printf("New insertion %d at pos %d\n", newsock,pos);
+		printf("Eimai %ld\n", pthread_self());
+		pos++;
+		count++;
+		pthread_cond_broadcast(&cond_nonempty);
+		pthread_mutex_unlock(&mtx);
+		sleep(5);
 	}
 }
 
