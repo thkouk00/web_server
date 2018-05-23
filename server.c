@@ -197,6 +197,8 @@ void* worker(void* arg)
 			printf("Valid %d %s\n", valid,target);
 			memset(requestbuff, 0, 270);
 			loop++;
+			free(target);
+			target = NULL;
 			// if valid continue
 			// else send back error for the request
 
