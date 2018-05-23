@@ -11,13 +11,19 @@
 #include <signal.h>			//signal
 #include <pthread.h>		//threads - compile with -pthread at end
 #include <string.h>			//strerror , error printing for threads
+#include "buflist.h"		//queue to hold fds
+#include "valid_request.h"	//check if GET request is valid
+
+void Usage(char *prog_name)
+{
+	fprintf(stderr, "Usage: %s -p serving_port -c command_port -t num_of_threads -d root_dir\n", prog_name);
+}
 
 // **NOTICE**
 // if server tries to write to a closed socket by client  
 // SIGPIPE raised so i have to handle it
 
-// void* child_server(void* nsock);
-//void* child2(void* nsock); 
+// pass arguments for thread in pthread_create
 struct arg_struct
 {
 	int arg1;
@@ -29,18 +35,13 @@ void* child2(void* nsock);
 void* worker(void* arg);
 void* producer(void* args);
 
-void perror_exit(char *message);
 void sigchld_handler(int sig);
 
 
-void Usage(char *prog_name)
-{
-	fprintf(stderr, "Usage: %s -p serving_port -c command_port -t num_of_threads -d root_dir\n", prog_name);
-}
-
 fd_set set, readfds;
-int connections[4] = {-2};
-int pos=0;
+short int shtdwn = 0;
+// must be set to NULL  
+buflist *buffer = NULL;
 int count=0;
 pthread_t *tid;
 pthread_t prod;
@@ -54,13 +55,10 @@ int main(int argc , char* argv[])
 	int nthr, port, command_port, sock, c_sock, newsock, command_sock;
 	char *root_dir;
 	socklen_t cmdlen;
-	// struct sockaddr_in server, client, cmd;
 	struct sockaddr_in server , cmd;
 	struct sockaddr *serverptr = (struct sockaddr*)&server ;
-	// struct sockaddr *clientptr= (struct sockaddr*)&client ;
 	struct sockaddr *cmdptr= (struct sockaddr*)&cmd;
 	struct hostent *rem;
-	// fd_set set, readfds;
 
 	//check if all arguments exist
 	if (argc != 9)
@@ -91,13 +89,15 @@ int main(int argc , char* argv[])
 	pthread_cond_init(&cond_nonfull, 0);
 	
 
-	//create socket
+	//create socket for clients
 	if ((sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
 		perror("Failed to create socket");
 
+	//create socket in order to receive commands from command line 
 	if ((c_sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
 		perror("Failed to create socket");	
 
+	// enable option for both sockets 
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &sockopt_val, sizeof(int)) == -1)
 	{
 		perror("Failed: setsockopt");
@@ -127,25 +127,26 @@ int main(int argc , char* argv[])
 
 	if (listen(c_sock,1) == -1)
 		perror("Failed: listen");
-	printf("Listening for connections to port %d\n", port);
+	printf("Listening for connections to port %d and commands from port %d\n", port,command_port);
 	
-	FD_ZERO(&set);
-	FD_SET(sock, &set);
-	FD_SET(c_sock, &set);
-
+	// struct for passing arguments
+	//useless i think , check it later
 	struct arg_struct arg_strct;
 	arg_strct.arg1 = sock;
 	arg_strct.arg2 = c_sock;
 
+	// thread pool 
 	tid = malloc(sizeof(pthread_t)*nthr);
 	//create #nthr threads
 	for (int i=0;i<nthr;i++)
-		pthread_create(tid+i, 0, producer, (void*)&sock);
+		pthread_create(tid+i, 0, worker, (void*)&sock);
 	//create one thread for inserting fd to buff
-	pthread_create(&prod, 0, worker, (void*)&arg_strct);
+	pthread_create(&prod, 0, producer, (void*)&arg_strct);
 
-	
-	while (1)
+	// wait for connection via netcat
+	// to take commands
+	// close server when "SHUTDOWN" arrive from cmd
+	while (!shtdwn)
 	{	
 		cmdlen = sizeof(cmd);
 		if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
@@ -167,22 +168,40 @@ int main(int argc , char* argv[])
 void* worker(void* arg)
 {
 	int *sock = arg;
+	int fd;
+	int loop = 1 , valid = 0;
+	char requestbuff[270]; 			// NAME_MAX + 13 for standard chars (GET , HTTP etc) + 1 for \0
+	char *target = NULL;
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
 		while (count == 0)
 			pthread_cond_wait(&cond_nonempty, &mtx);
-		printf("Evgala fd %d apo thesi %d\n", connections[pos-1],pos-1);
-		printf("Worker %ld\n", pthread_self());
-		connections[pos] = -2;
-		pos--;
+		// take first fd from queue
+		pop_head(&buffer, &fd);
 		count--;
-		pthread_cond_broadcast(&cond_nonfull);
+		printf("Evgala fd %d , count %d\n", fd,count);
+		printf("Worker %ld\n", pthread_self());
 		pthread_mutex_unlock(&mtx);
-		// if buff not empty
-		// 	take fd
-		// else
-		// 	wait
+		while (read(fd, requestbuff, 270)>0)
+		{	
+			requestbuff[strlen(requestbuff)-1] = '\0';
+			if(strlen(requestbuff)==0)
+				break;
+			printf("Server received : %s\n", requestbuff);
+			valid = valid_request(requestbuff,loop,&target);
+			if (valid > 0)
+				printf("Valid request, continue to host\n");
+			else
+				printf("Invalid request\n");
+			printf("Valid %d %s\n", valid,target);
+			memset(requestbuff, 0, 270);
+			loop++;
+			// if valid continue
+			// else send back error for the request
+
+		}
+		close(fd);
 	}
 }
 
@@ -198,23 +217,29 @@ void* producer(void* args)
 	struct sockaddr *clientptr= (struct sockaddr*)&client ;
 	struct sockaddr *cmdptr= (struct sockaddr*)&cmd;
 
+	FD_ZERO(&set);
+	FD_SET(sock, &set);
+	highfd = sock;
 	while(1)
 	{
-		
-		pthread_mutex_lock(&mtx);
-		while (count == 4)
-			pthread_cond_wait(&cond_nonfull, &mtx);
-		if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
-			perror("Failed: accept");
+		readfds = set;
+		res = select(highfd+1, &readfds, NULL, NULL, NULL);
+		if (res < 0)
+			printf("ERROR SELECT\n");
+		else if (res > 0)
+		{
+			pthread_mutex_lock(&mtx);
+			if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
+				perror("Failed: accept");
 
-		connections[pos] = newsock;
-		printf("New insertion %d at pos %d\n", newsock,pos);
-		printf("Eimai %ld\n", pthread_self());
-		pos++;
-		count++;
-		pthread_cond_broadcast(&cond_nonempty);
-		pthread_mutex_unlock(&mtx);
-		sleep(5);
+			// insert fd to buffer
+			push(&buffer,newsock);
+			count++;
+			printf("New insertion %d , count %d\n", newsock,count);
+			printf("Eimai %ld\n", pthread_self());
+			pthread_cond_broadcast(&cond_nonempty);
+			pthread_mutex_unlock(&mtx);
+		}
 	}
 }
 
@@ -225,38 +250,28 @@ void* producer(void* args)
 void* child2(void* nsock) 
 {
 	int *command_sock = nsock;
-	char buf[1];
+	char buf[256];
 	printf("Command port printing\n");
-	while(read(*command_sock, buf, 1) > 0) 
-	{ /* Receive 1 char */
-		putchar(buf[0]); /* Print received char */
+	// while(read(*command_sock, buf, 256) > 0) 
+	// { 
+	// 	// putchar(buf[0]); /* Print received char */
+	// 	printf("Server: %s\n", buf);
+	// }
+	while (read(*command_sock, buf, 256)>0)
+	{	
+		buf[strlen(buf)-1] = '\0';
+		if(strlen(buf)==0)
+			break;
+		printf("Commandport received : %s\n", buf);
+		memset(buf, 0, 256);
 	}
+
+	// write(*command_sock,"Response from server",strlen("Response from server"));
+	return (void*)1;
 }
 
-void* child_server(void* nsock) 
-{
-	int *newsock = nsock;
-	char buf[1];
-	while(read(*newsock, buf, 1) > 0) 
-	{ /* Receive 1 char */
-		putchar(buf[0]); /* Print received char */
-		/* Capitalize character */
-		buf[0] = toupper(buf[0]);
-		/* Reply */
-		if (write(*newsock, buf, 1) < 0)
-			perror_exit("write");
-	}
-	printf("Closing connection.\n");
-	close(*newsock); /* Close socket */
-}
 
 void sigchld_handler(int sig) 
 {
 	while (waitpid(-1, NULL, WNOHANG) > 0);
-}
-
-void perror_exit(char *message) 
-{
-	perror(message);
-	exit(EXIT_FAILURE);
 }

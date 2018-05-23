@@ -38,19 +38,22 @@ int main(int argc, char* argv[])
 		perror("Failed to connect");
 	printf("Connecting to %s port %d\n", argv[1], port);
 	do {
-		printf("Give input string: ");
+		printf("Give request: ");
 		fgets(buf, sizeof(buf), stdin); /* Read from stdin*/
-		for(i=0; buf[i] != '\0'; i++) 
-		{ 
-			/* For every char */
-			/* Send i-th character */
-			if (write(sock, buf + i, 1) < 0)
-				perror_exit("write");
+		buf[strlen(buf)-1] = '\0';
+		printf("Request is %s\n", buf);
+
+		// for(i=0; buf[i] != '\0'; i++) 
+		// { 
+		// 	/* For every char */
+		// 	/* Send i-th character */
+		// 	if (write(sock, buf + i, 1) < 0)
+		// 		perror_exit("write");
 			
-			/* receive i-th character transformed */
-			if (read(sock, buf + i, 1) < 0)
+		// 	/* receive i-th character transformed */
+			if (read(sock, buf, strlen(buf)) < 0)
 				perror_exit("read");
-		}
+		// }
 		printf("Received string: %s", buf);
 	} while (strcmp(buf, "END\n") != 0); /* Finish on "end" */
 
