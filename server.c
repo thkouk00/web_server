@@ -12,7 +12,8 @@
 #include <pthread.h>		//threads - compile with -pthread at end
 #include <string.h>			//strerror , error printing for threads
 #include <time.h>			//strftime
-#include <sys/sendfile.h>		//more efficient way to send file than read-write
+#include <sys/time.h>
+#include <sys/sendfile.h>	//more efficient way to send file than read-write
 #include "buflist.h"		//queue to hold fds
 #include "valid_request.h"	//check if GET request is valid
 
@@ -73,9 +74,12 @@ buflist *buffer = NULL;
 int count=0;
 pthread_t *tid;
 pthread_t prod;
-pthread_mutex_t mtx;
+pthread_mutex_t mtx , clock_mtx;
 pthread_cond_t cond_nonempty;
 pthread_cond_t cond_nonfull;
+// time_t start = -1 , end = -1;
+time_t start,end;
+// struct timeval t1,t2;
 
 int main(int argc , char* argv[])
 {
@@ -103,7 +107,11 @@ int main(int argc , char* argv[])
 			else if (!strcmp("-c",argv[i]))
 				command_port = atoi(argv[i+1]);
 			else if (!strcmp("-t",argv[i]))
+			{
 				nthr = atoi(argv[i+1]);
+				if (nthr == 0)
+					nthr = 2;		//default value
+			}
 			else if (!strcmp("-d",argv[i]))
 			{
 				root_dir = malloc(sizeof(char)*(strlen(argv[i+1])+1));
@@ -113,6 +121,7 @@ int main(int argc , char* argv[])
 	}
 
 	pthread_mutex_init(&mtx, 0);
+	pthread_mutex_init(&clock_mtx, 0);
 	pthread_cond_init(&cond_nonempty, 0);
 	pthread_cond_init(&cond_nonfull, 0);
 	
@@ -170,6 +179,7 @@ int main(int argc , char* argv[])
 		pthread_create(tid+i, 0, worker, (void*)&sock);
 	//create one thread for inserting fd to buff
 	pthread_create(&prod, 0, producer, (void*)&arg_strct);
+	time(&start);
 
 	// wait for connection via netcat
 	// to take commands
@@ -184,12 +194,13 @@ int main(int argc , char* argv[])
 	}	
 
 
-	for (int i=0;i<4;i++)
+	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
 	pthread_join(prod, NULL);
 
 	//free
 	free(root_dir);
+	free(tid);
 }
 
 
@@ -205,6 +216,14 @@ void* worker(void* arg)
 	char date[32];
 	char responsebuf[400];
 	char fileresponse;
+	
+	// pthread_mutex_lock(&clock_mtx);
+	// if (!start)
+	// {
+	// 	printf("MPIKA\n");
+	// 	// time(&start);
+	// }
+	// pthread_mutex_unlock(&clock_mtx);
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
@@ -369,16 +388,19 @@ void* child2(void* nsock)
 	int *command_sock = nsock;
 	char buf[256];
 	printf("Command port printing\n");
-	// while(read(*command_sock, buf, 256) > 0) 
-	// { 
-	// 	// putchar(buf[0]); /* Print received char */
-	// 	printf("Server: %s\n", buf);
-	// }
 	while (read(*command_sock, buf, 256)>0)
 	{	
 		buf[strlen(buf)-1] = '\0';
 		if(strlen(buf)==0)
 			break;
+		if (!strcmp(buf, "STATS"))
+		{
+			pthread_mutex_lock(&clock_mtx);
+			// gettimeofday(&t2,NULL);
+			time(&end);
+			printf("Server up for %.2f\n",difftime(end, start));
+			pthread_mutex_unlock(&clock_mtx);
+		}
 		printf("Commandport received : %s\n", buf);
 		memset(buf, 0, 256);
 	}
