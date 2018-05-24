@@ -2,7 +2,8 @@
 
 int valid_request(char *buffer,int loop,char **target)
 {
-	printf("loop %d FUNC %s\n",loop,buffer);
+	if (*target != NULL)
+		return 1;
 	int word = 0;
 	char *token;
 	// char *target;
@@ -11,54 +12,49 @@ int valid_request(char *buffer,int loop,char **target)
 	if (loop == 1)
 	{
 		if (strcmp(token,"GET"))
-		{
-			printf("GET error\n");
 			return -1;
-		}
+		token = strtok(NULL," \0");
+		word++;
 		while (token != NULL)
 		{
-			token = strtok(NULL," \0");
-			word++;
+			// token = strtok(NULL," \0");
+			// word++;
 			if (word == 2)
 			{	
-				printf("MPAIKA\n");
 				*target = malloc(sizeof(char)*(strlen(token)+1));
-				// target = token;
 				memcpy(*target,token,strlen(token));
 			}
 			else if (word == 3)
 			{
 				if (strcmp(token, "HTTP/1.1"))
-				{
-					printf("HTTP error\n");
 					return -1;
-				}
 			}
+			token = strtok(NULL," \0");
+			word++;
 		}
 		if (word == 4)
 			return 1;
 		else
 			return -1;
 	}
-	else if (loop == 2)
+	
+	if (strcmp(token, "Host:"))
+		return -1;
+	token = strtok(NULL," \0");
+	word++;
+	while (token != NULL)
 	{
-		if (strcmp(token, "Host:"))
-			return -1;
-		while (token != NULL)
+		if (word == 2)
 		{
-			token = strtok(NULL," \0");
-			word++;
-			if (word == 2)
-			{
-				//here target represents host
-				*target = malloc(sizeof(char)*(strlen(token)+1));
-				memcpy(*target, token, strlen(token));
-			}
+			//here target represents host
+			*target = malloc(sizeof(char)*(strlen(token)+1));
+			memcpy(*target, token, strlen(token));
 		}
-		if (word == 3)
-			return 1;
-		else
-			return -1;
+		token = strtok(NULL," \0");
+		word++;
 	}
-	return 2;
+	if (word == 3)
+		return 1;
+	else
+		return -1;
 }

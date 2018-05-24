@@ -6,13 +6,41 @@
 #include <netinet/in.h>		//htons,htonl,ntohs,ntohl
 #include <netdb.h>			//gethostbyaddr, gethostbyname
 #include <sys/socket.h>		//all socket functions
-#include <unistd.h>			//fork
+#include <unistd.h>			//access
 #include <ctype.h>			//toupper
 #include <signal.h>			//signal
 #include <pthread.h>		//threads - compile with -pthread at end
 #include <string.h>			//strerror , error printing for threads
+#include <time.h>			//strftime
+#include <sys/sendfile.h>		//more efficient way to send file than read-write
 #include "buflist.h"		//queue to hold fds
 #include "valid_request.h"	//check if GET request is valid
+
+#define REQFOUND "HTTP/1.1 200 OK\r\n"\
+				"Date: %s\r\n"\
+				"Server: myhttpd/1.0.0 (Ubuntu64)\r\n"\
+				"Content-Length: %d\r\n"\
+				"Content-Type: text/html\r\n"\
+				"Connection: Closed\r\n"\
+				"\r\n"
+
+#define REQNOTFOUND "HTTP/1.1 404 Not Found\r\n"\
+					"Date: %s\r\n"\
+					"Server: myhttpd/1.0.0 (Ubuntu64)\r\n"\
+					"Content-Length: %ld\r\n"\
+					"Content-Type: text/html\r\n"\
+					"Connection: Closed\r\n"\
+					"\r\n"
+#define REQNORIGHTS "HTTP/1.1 403 Forbidden\r\n"\
+				"Date: %s\r\n"\
+				"Server: myhttpd/1.0.0 (Ubuntu64)\r\n"\
+				"Content-Length: %ld\r\n"\
+				"Content-Type: text/html\r\n"\
+				"Connection: Closed\r\n"\
+				"\r\n"
+#define MSG1 "<html>Sorry dude, couldn't find this file.</html>"
+#define MSG2 "<html>Trying to access this file but don't think i can make it.</html>"
+
 
 void Usage(char *prog_name)
 {
@@ -169,9 +197,14 @@ void* worker(void* arg)
 {
 	int *sock = arg;
 	int fd;
-	int loop = 1 , valid = 0;
+	int loop, valid, invalid, res;
 	char requestbuff[270]; 			// NAME_MAX + 13 for standard chars (GET , HTTP etc) + 1 for \0
 	char *target = NULL;
+	char *host = NULL;
+	char *path = NULL;
+	char date[32];
+	char responsebuf[400];
+	char fileresponse;
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
@@ -183,26 +216,108 @@ void* worker(void* arg)
 		printf("Evgala fd %d , count %d\n", fd,count);
 		printf("Worker %ld\n", pthread_self());
 		pthread_mutex_unlock(&mtx);
+		valid = invalid = 0;
+		loop = 1;
+		// reset buffer
+		memset(requestbuff, 0, 270);
 		while (read(fd, requestbuff, 270)>0)
 		{	
 			requestbuff[strlen(requestbuff)-1] = '\0';
+			//GET request ends with blank line
 			if(strlen(requestbuff)==0)
 				break;
-			printf("Server received : %s\n", requestbuff);
-			valid = valid_request(requestbuff,loop,&target);
-			if (valid > 0)
-				printf("Valid request, continue to host\n");
-			else
-				printf("Invalid request\n");
-			printf("Valid %d %s\n", valid,target);
+			//check if request is valid
+			//line per line
+			//i check only the requirements ; GET and Host
+			//everything else i skip it
+			if (loop == 1)
+				valid = valid_request(requestbuff,loop,&target);
+			else 
+			{
+				if (host == NULL)
+					valid = valid_request(requestbuff,loop,&host);
+				else
+					valid = 0;
+			}
+			if (valid < 0)
+			{
+				invalid = 1;
+				break;//invalid request do stuff
+			}
 			memset(requestbuff, 0, 270);
 			loop++;
+		}
+		//form time for http response
+		time_t now =time(0);
+		struct tm tm = *gmtime(&now);
+		strftime(date, sizeof(date), "%a, %d %b %Y %H:%M:%S %Z", &tm);
+		if (!invalid)
+		{
+			path = malloc(sizeof(char)*(strlen(target)+strlen(host)));
+			sprintf(path, "%s%s",host,target);
+			// printf("Path is %s\n", path);
+			//check if file exists and if we have rights to read it
+			if ((res = access(path, F_OK)) == 0)
+			{
+				printf("OK file exists\n");
+				if ((res = access(path, R_OK)) < 0)
+				{	
+					//send 403 msg
+					snprintf(responsebuf, sizeof(responsebuf), REQNORIGHTS,date,strlen(MSG2));
+					// send response to client
+					write(fd, responsebuf, strlen(responsebuf));
+					write(fd, MSG2, strlen(MSG2));
+				}
+				else
+				{
+					FILE *fp = fopen(path, "r");
+					int fsize;
+					ssize_t bytes_written;
+					ssize_t total_bytes_written = 0;
+					fseek(fp, 0, SEEK_END);
+					fsize = ftell(fp);
+					//send 200 msg
+					snprintf(responsebuf, sizeof(responsebuf), REQFOUND,date,fsize);
+					fseek(fp, 0, SEEK_SET);
+					// send response to client
+					write(fd, responsebuf, strlen(responsebuf));
+					char *tmpbuf = malloc(sizeof(char)*fsize);
+					fread(tmpbuf,fsize,1,fp);
+					while (total_bytes_written != fsize)
+					{
+						bytes_written = write(fd,&tmpbuf[total_bytes_written],fsize - total_bytes_written);
+						if (bytes_written < 0)
+							continue;
+						total_bytes_written += bytes_written;
+						
+					}
+					free(tmpbuf);
+				}
+			}
+			else
+			{
+				//send 404 msg
+				snprintf(responsebuf, sizeof(responsebuf), REQNOTFOUND,date,strlen(MSG1));
+				// send response to client
+				write(fd, responsebuf, strlen(responsebuf));
+				write(fd, MSG1, strlen(MSG1));
+			}
+			
+			// free path
+			free(path);
+		}
+		//reset variables for next fd
+		if (target)
+		{
 			free(target);
 			target = NULL;
-			// if valid continue
-			// else send back error for the request
-
 		}
+		if (host)
+		{
+			free(host);
+			host = NULL;
+		}
+		// close connection
 		close(fd);
 	}
 }
