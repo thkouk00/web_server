@@ -12,7 +12,7 @@
 #include <pthread.h>		//threads - compile with -pthread at end
 #include <string.h>			//strerror , error printing for threads
 #include <time.h>			//strftime
-#include <sys/time.h>
+#include <sys/timeb.h>
 #include <sys/sendfile.h>	//more efficient way to send file than read-write
 #include "buflist.h"		//queue to hold fds
 #include "valid_request.h"	//check if GET request is valid
@@ -68,17 +68,19 @@ void sigchld_handler(int sig);
 
 
 fd_set set, readfds;
-short int shtdwn = 0;
+short int shtdwn_flag = 0;
 // must be set to NULL  
 buflist *buffer = NULL;
 int count=0;
+int served_pages = 0 , total_bytes = 0;			//for stats 
 pthread_t *tid;
 pthread_t prod;
-pthread_mutex_t mtx , clock_mtx;
+pthread_mutex_t mtx , clock_mtx , stat_mtx;
 pthread_cond_t cond_nonempty;
 pthread_cond_t cond_nonfull;
 // time_t start = -1 , end = -1;
-time_t start,end;
+// time_t start,end;
+struct timeb start,end;
 // struct timeval t1,t2;
 
 int main(int argc , char* argv[])
@@ -96,6 +98,7 @@ int main(int argc , char* argv[])
 	if (argc != 9)
 	{
 		Usage(argv[0]);
+		exit(1);
 	}
 	else
 	{
@@ -122,6 +125,7 @@ int main(int argc , char* argv[])
 
 	pthread_mutex_init(&mtx, 0);
 	pthread_mutex_init(&clock_mtx, 0);
+	pthread_mutex_init(&stat_mtx, 0);
 	pthread_cond_init(&cond_nonempty, 0);
 	pthread_cond_init(&cond_nonfull, 0);
 	
@@ -179,25 +183,33 @@ int main(int argc , char* argv[])
 		pthread_create(tid+i, 0, worker, (void*)&sock);
 	//create one thread for inserting fd to buff
 	pthread_create(&prod, 0, producer, (void*)&arg_strct);
-	time(&start);
+	ftime(&start);			//start timer
 
 	// wait for connection via netcat
 	// to take commands
 	// close server when "SHUTDOWN" arrive from cmd
-	while (!shtdwn)
+	while (1)
 	{	
 		cmdlen = sizeof(cmd);
 		if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
 			perror("Failed: accept for command port");
 
 		child2(&command_sock);
+		if (shtdwn_flag)
+		{
+			shutdown(command_sock, SHUT_RDWR);
+			break;
+		}
 	}	
-
+	printf("JERE\n");
 
 	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
+	printf("EDW\n");
 	pthread_join(prod, NULL);
-
+	printf("EDW2\n");
+	//free queue
+	freelist(&buffer);
 	//free
 	free(root_dir);
 	free(tid);
@@ -209,7 +221,7 @@ void* worker(void* arg)
 	int *sock = arg;
 	int fd;
 	int loop, valid, invalid, res;
-	char requestbuff[270]; 			// NAME_MAX + 13 for standard chars (GET , HTTP etc) + 1 for \0
+	char requestbuff[1000]; 			// NAME_MAX + 13 for standard chars (GET , HTTP etc) + 1 for \0
 	char *target = NULL;
 	char *host = NULL;
 	char *path = NULL;
@@ -217,13 +229,6 @@ void* worker(void* arg)
 	char responsebuf[400];
 	char fileresponse;
 	
-	// pthread_mutex_lock(&clock_mtx);
-	// if (!start)
-	// {
-	// 	printf("MPIKA\n");
-	// 	// time(&start);
-	// }
-	// pthread_mutex_unlock(&clock_mtx);
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
@@ -238,34 +243,59 @@ void* worker(void* arg)
 		valid = invalid = 0;
 		loop = 1;
 		// reset buffer
-		memset(requestbuff, 0, 270);
-		while (read(fd, requestbuff, 270)>0)
+		memset(requestbuff, 0, sizeof(requestbuff));
+		int data_read=0;
+		int total_data=0;
+		while ((data_read = read(fd, &requestbuff[total_data], (sizeof(requestbuff)-total_data)))>0)
 		{	
-			requestbuff[strlen(requestbuff)-1] = '\0';
-			//GET request ends with blank line
-			if(strlen(requestbuff)==0)
-				break;
-			//check if request is valid
-			//line per line
-			//i check only the requirements ; GET and Host
-			//everything else i skip it
-			if (loop == 1)
-				valid = valid_request(requestbuff,loop,&target);
-			else 
-			{
-				if (host == NULL)
-					valid = valid_request(requestbuff,loop,&host);
-				else
-					valid = 0;
-			}
-			if (valid < 0)
-			{
-				invalid = 1;
-				break;//invalid request do stuff
-			}
-			memset(requestbuff, 0, 270);
-			loop++;
+			total_data += data_read;
 		}
+		printf("%s", requestbuff);
+		//must end with blank line
+		if (strncmp(&requestbuff[strlen(requestbuff)-4],"\r\n\r\n", 4))
+		{
+			printf("No blank line at end\n");
+			invalid = 1;
+		}
+		else
+		{
+			// requestbuff[strlen(requestbuff)] = '\0';
+			char *token , delim[]="\r\n";
+			char *tmp;
+			token = strtok(requestbuff, delim);
+			while (token!=NULL)
+			{
+				printf("AA %s.\n", token);
+				tmp = malloc(sizeof(char)*(strlen(token)+1));
+				memset(tmp, 0, strlen(token)+1);
+				memcpy(tmp, token, strlen(token));
+				tmp[strlen(tmp)] = '\0';
+				// // token[strlen(token)] = '\0';
+				// if (loop == 1)
+				// if (!strncmp(token, "GET ",4))
+				if (!strncmp(tmp, "GET ", 4))	
+					valid = valid_request(tmp, loop, &target);
+				else
+					valid = valid_request(tmp, loop, &host);
+				// {
+				// 	printf("STELNW %s.\n", token);
+				// 	printf("#.%s.\n", requestbuff);
+				// }
+				if (valid < 0)
+				{
+					printf("INVALID request\n");
+					invalid = 1;
+					break;
+				}
+				free(tmp);
+				loop++;
+				token = strtok(NULL, delim);
+				printf("BACK %s.\n",token);
+				// printf("%s\n", requestbuff);
+			}
+			printf("TARGET %s,HOST %s\n", target,host);
+		}
+
 		//form time for http response
 		time_t now =time(0);
 		struct tm tm = *gmtime(&now);
@@ -310,6 +340,10 @@ void* worker(void* arg)
 						total_bytes_written += bytes_written;
 						
 					}
+					pthread_mutex_lock(&stat_mtx);
+					served_pages++;
+					total_bytes += fsize;
+					pthread_mutex_unlock(&stat_mtx);
 					free(tmpbuf);
 				}
 			}
@@ -337,7 +371,16 @@ void* worker(void* arg)
 			host = NULL;
 		}
 		// close connection
-		close(fd);
+		// close(fd);
+
+		//check if needed lock
+		if (shtdwn_flag)
+		{
+			shutdown(fd, SHUT_RDWR);
+			pthread_exit((void*)1);
+		}
+		else
+			close(fd);
 	}
 }
 
@@ -376,6 +419,8 @@ void* producer(void* args)
 			pthread_cond_broadcast(&cond_nonempty);
 			pthread_mutex_unlock(&mtx);
 		}
+		if (shtdwn_flag)
+			pthread_exit((void*)1);
 	}
 }
 
@@ -396,11 +441,26 @@ void* child2(void* nsock)
 		if (!strcmp(buf, "STATS"))
 		{
 			pthread_mutex_lock(&clock_mtx);
-			// gettimeofday(&t2,NULL);
-			time(&end);
-			printf("Server up for %.2f\n",difftime(end, start));
+			//mporei na xreiazetai lock kai to stat_mtx , check it
+			ftime(&end);				//stop timer
+			int hours;
+			if ((end.time-start.time)/60 >= 60)
+			{
+				hours = ((end.time-start.time)/60);
+				printf("Server up for %02d:%02d:%02d.%02d, served %d pages, %d bytes\n",hours/60,(hours/60)%60,hours%60,(1000+(end.millitm-start.millitm)%1000)/10,served_pages,total_bytes);
+			}
+			else
+				printf("Server up for %02ld:%02ld.%02d, served %d pages, %d bytes\n",(end.time-start.time)/60,(end.time-start.time)%60,(1000+(end.millitm-start.millitm)%1000)/10,served_pages,total_bytes);
 			pthread_mutex_unlock(&clock_mtx);
 		}
+		if (!strcmp(buf, "SHUTDOWN"))
+		{
+			printf("Shutting down server\n");
+			shtdwn_flag = 1;
+			// close(*command_sock);
+			break;
+		}
+
 		printf("Commandport received : %s\n", buf);
 		memset(buf, 0, 256);
 	}
