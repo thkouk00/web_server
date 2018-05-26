@@ -337,8 +337,8 @@ void* worker(void* arg)
 						bytes_written = write(fd,&tmpbuf[total_bytes_written],fsize - total_bytes_written);
 						if (bytes_written < 0)
 							continue;
-						total_bytes_written += bytes_written;
-						
+						total_bytes_written += bytes_written;	
+						printf("total_bytes_written %ld\n", total_bytes_written);
 					}
 					pthread_mutex_lock(&stat_mtx);
 					served_pages++;
@@ -433,6 +433,7 @@ void* child2(void* nsock)
 	int *command_sock = nsock;
 	char buf[256];
 	printf("Command port printing\n");
+	//response through socket not stdout
 	while (read(*command_sock, buf, 256)>0)
 	{	
 		buf[strlen(buf)-1] = '\0';

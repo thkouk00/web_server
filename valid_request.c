@@ -5,15 +5,14 @@
 
 int valid_request(char *buffer,int loop,char **target)
 {
+	//na to kanw free kiolas auto
 	char *tt = malloc(sizeof(char)*(strlen(buffer)+1));
 	memset(tt, 0, strlen(buffer)+1);
 	memcpy(tt, buffer, strlen(buffer));
 	tt[strlen(tt)] = '\0';
 	printf("PHRA %s\n", tt);
 	char *rest = tt;
-	// if (!strncmp(&buffer[strlen(buffer)-2], "\r\n",2))
-	// if (buffer[strlen(buffer)-1]=='\n')
-	// 	printf("nai einai\n");
+
 	if (*target != NULL)
 		return 1;
 	int word = 0;

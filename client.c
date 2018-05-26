@@ -1,15 +1,25 @@
 #include <stdio.h>
 #include <sys/types.h> /* sockets */
 #include <sys/socket.h> /* sockets */
+#include <sys/stat.h>	/* mkdir */
 #include <netinet/in.h> /* internet sockets */
 #include <unistd.h> /* read, write, close */
 #include <netdb.h> /* gethostbyaddr */
 #include <stdlib.h> /* exit */
 #include <string.h> /* strlen */
+#include <dirent.h>
+#include "check_response.h"
+
 
 #define REQUEST "GET %s HTTP/1.1\r\n"\
 				"Host: %s\r\n"\
 				"\r\n"
+#define RESPONSE "HTTP/1.1 200 OK\r\n"\
+				"Date: XXX, XX XXX XXXX XX:XX:XX GMT"\
+				"Server: myhttpd/1.0.0 (Ubuntu64)"\
+				"Content-Length: 65081"\
+				"Content-Type: text/html"\
+				"Connection: Closed"
 
 void perror_exit(char *message);
 void Usage(char *prog_name)
@@ -77,10 +87,26 @@ int main(int argc, char* argv[])
 	printf("Dir %s\n", save_dir);
 	
 	int i, sock;
-	char buf[1000];
+	char buf[270];
 	struct sockaddr_in server;
 	struct sockaddr *serverptr = (struct sockaddr*)&server;
 	struct hostent *rem;
+	DIR* dir = opendir(save_dir);
+	struct dirent *de;
+	//check if dir exists , if not create directory
+	if (!dir)
+		mkdir(save_dir,0760);
+	//ftiaxnw meta na kanei purge
+	while ((de = readdir(dir)) != NULL)
+	{
+		if (!strcmp(de->d_name,".") || !strcmp(de->d_name,".."))
+			continue;	
+		printf("%s\n", de->d_name);
+		// if (rmdir(de->d_name)<0)
+		// 	printf("ERROR\n");
+	}
+	// char *filename = 
+	FILE *fp = fopen("/home/thanos/Desktop/save_dir/file.html", "w");
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 		perror("Failed to create socket");
@@ -97,64 +123,76 @@ int main(int argc, char* argv[])
 		perror("Failed to connect");
 	printf("Connecting to %s port %d\n", host_or_IP, port);
 	
-	//loopa client
-	// while(1)
-	// {
-	// for (int i =0;i<3;i++)
-	// {
-	// 	fgets(buf,sizeof(buf),stdin);
-	// 	if (write(sock,buf,strlen(buf))<0)
-	// 		printf("Fail req1\n");
-	// 	memset(buf, 0, sizeof(buf));
-	// }
+	
 		
-		snprintf(buf, sizeof(buf), REQUEST,"/site0/page0_21.html","/home/thanos/Desktop/root_dir");
+	snprintf(buf, sizeof(buf), REQUEST,"/site0/page0_27199.html","/home/thanos/Desktop/root_dir");
 		// buf[strlen(buf)] = '\0';
-		if (write(sock,buf,strlen(buf))<0)
-			printf("Fail req\n");
-		shutdown(sock, SHUT_WR);
-		// // sleep(3);
-		// sleep(3);
-		// if (write(sock,REQ3,strlen(REQ3))<0)
-		// 	printf("Fail req3\n");
-		// int read_size = read(sock,buf,sizeof(buf));
-		int data_read=0;
-		int total_data=0;
-		memset(buf, 0, sizeof(buf));
-		while ((data_read = read(sock,&buf[total_data],sizeof(buf)-total_data))>0)
-		{
-			total_data += data_read;
-		} 
-		//evgala auto gia dokimi , doyleuei kai xwris ayto
-		// buf[strlen(buf)-1] = '\0';
-		printf("%s\n", buf);
-		// if (read_size<0)
-		// 	printf("Error receive\n");
-		// else
-		// {
-		// 	printf("read_size %d\n", read_size);
-		// 	printf("%s\n", buf);
-		// }
-		printf("ALALAL\n");
-		// while ((read_size=read(sock,buf,sizeof(buf)))>=0)
-		// {
-		// 	if (read_size == 0)
-		// 		continue;
-		// 	printf("%s\n", buf);
-		// 	memset(buf, 0, sizeof(buf));
-			
-		// }
-	// }
-	// while (read(sock, buf, 39)<0);
-	// printf("Buf:\n");
-	// printf("%s", buf);
+	if (write(sock,buf,strlen(buf))<0)
+		printf("Fail req\n");
+	shutdown(sock, SHUT_WR);
+		
+	int data_read=0;
+	int total_data=0;
+	char *rr=NULL;
+	memset(buf, 0, sizeof(buf));
+	while ((data_read = read(sock,&buf[total_data],sizeof(buf)-total_data)) > 0)
+	{
+		total_data += data_read;
+		printf("MPIKA %d\n", total_data);
+		// if ((rr = strstr(buf, "\r\n\r\n"))!=NULL)
+		// 	break; 
+	} 
+	// rr = strstr(buf, "\r\n\r\n");
+	rr = strstr(buf,"<!DOCTYPE html>");
+	printf("%s\n", rr);
+	printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(rr));
+	//takes only header
+	char *new = malloc(sizeof(char)*(strlen(buf)-strlen(rr)+1));
+	memcpy(new, buf, strlen(buf)-strlen(rr));
+	printf("NEW\n%s--",new);
+	//twra tha parw ta ypoloipa , an exei parei kai na parw me write + ta ypoloipa
+	char *Newbuf = malloc(sizeof(char)*650802);
+	memcpy(Newbuf, rr, strlen(rr));
 
+	total_data = strlen(rr);
+	while ((data_read = read(sock,&Newbuf[total_data],65802-total_data)) > 0)
+		total_data += data_read;
+	printf("TOTAL_DATA %d and %ld\n", total_data,sizeof(Newbuf)-total_data);
+	printf("-------------------------\n");
+	printf("%s\n", Newbuf);
+	printf("-------------------------\n");
+	printf("%s\n", buf);
+	char *token, delim[] = "\r\n";
+	int response_len = -1 , code = -1, body_flag = 0;
+	//copy of buf , in order no to lose data from strtok
+	//use it to take code and length of response from HTTP header
+	char *tempbuf = malloc(sizeof(char)*(strlen(buf)+1)); 
+	memset(tempbuf, 0, strlen(buf)+1);
+	memcpy(tempbuf, buf, strlen(buf));
+	token = strtok(tempbuf, delim);
+	while (token != NULL)
+	{
+		printf("TOKEN. %s\n",token);
+		check_response(token,&code,&response_len);
+		if (code != -1 && response_len != -1)
+			break;
+		token = strtok(NULL, delim);
+	}
+	free(tempbuf);
+	//take body of HTTP response
+	char *body;
+	body = strstr(buf, "<!DOCTYPE html>");
+	printf("%s\n", body);	
+	printf("length %ld\n", strlen(body));
+	printf("Code %d , len %d\n", code,response_len);
+	fwrite(Newbuf, 1, strlen(Newbuf), fp);
 
 	close(sock); /* Close socket and exit */
 	//free memory
 	free(host_or_IP);
 	free(save_dir);
 	free(starting_URL);
+	
 }
 
 void perror_exit(char *message)
