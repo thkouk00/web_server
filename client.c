@@ -124,17 +124,20 @@ int main(int argc, char* argv[])
 	printf("Connecting to %s port %d\n", host_or_IP, port);
 	
 	
-		
+	//pairnw ta aitimata apo thn oura logika , tha to dw auto
+	//ftiaxnw to minima
 	snprintf(buf, sizeof(buf), REQUEST,"/site0/page0_27199.html","/home/thanos/Desktop/root_dir");
-		// buf[strlen(buf)] = '\0';
+	//to steila
 	if (write(sock,buf,strlen(buf))<0)
 		printf("Fail req\n");
+	//kleinw to socket gia grapsimo , mporei na xreiazetai mporei kai oxi
 	shutdown(sock, SHUT_WR);
 		
 	int data_read=0;
 	int total_data=0;
 	char *rr=NULL;
 	memset(buf, 0, sizeof(buf));
+	//diabazei header + kati akoma
 	while ((data_read = read(sock,&buf[total_data],sizeof(buf)-total_data)) > 0)
 	{
 		total_data += data_read;
@@ -142,34 +145,22 @@ int main(int argc, char* argv[])
 		// if ((rr = strstr(buf, "\r\n\r\n"))!=NULL)
 		// 	break; 
 	} 
-	// rr = strstr(buf, "\r\n\r\n");
+	//brisko pou xekina to body tou minimatos
 	rr = strstr(buf,"<!DOCTYPE html>");
 	printf("%s\n", rr);
 	printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(rr));
-	//takes only header
+	//takes only header 
 	char *new = malloc(sizeof(char)*(strlen(buf)-strlen(rr)+1));
 	memcpy(new, buf, strlen(buf)-strlen(rr));
 	printf("NEW\n%s--",new);
-	//twra tha parw ta ypoloipa , an exei parei kai na parw me write + ta ypoloipa
-	char *Newbuf = malloc(sizeof(char)*650802);
-	memcpy(Newbuf, rr, strlen(rr));
-
-	total_data = strlen(rr);
-	while ((data_read = read(sock,&Newbuf[total_data],65802-total_data)) > 0)
-		total_data += data_read;
-	printf("TOTAL_DATA %d and %ld\n", total_data,sizeof(Newbuf)-total_data);
-	printf("-------------------------\n");
-	printf("%s\n", Newbuf);
-	printf("-------------------------\n");
-	printf("%s\n", buf);
-	char *token, delim[] = "\r\n";
-	int response_len = -1 , code = -1, body_flag = 0;
 	//copy of buf , in order no to lose data from strtok
 	//use it to take code and length of response from HTTP header
-	char *tempbuf = malloc(sizeof(char)*(strlen(buf)+1)); 
-	memset(tempbuf, 0, strlen(buf)+1);
-	memcpy(tempbuf, buf, strlen(buf));
-	token = strtok(tempbuf, delim);
+	char *token, delim[] = "\r\n";
+	int response_len = -1 , code = -1;
+	// char *tempbuf = malloc(sizeof(char)*(strlen(buf)+1)); 
+	// memset(tempbuf, 0, strlen(buf)+1);
+	// memcpy(tempbuf, buf, strlen(buf));
+	token = strtok(new, delim);
 	while (token != NULL)
 	{
 		printf("TOKEN. %s\n",token);
@@ -178,13 +169,24 @@ int main(int argc, char* argv[])
 			break;
 		token = strtok(NULL, delim);
 	}
-	free(tempbuf);
-	//take body of HTTP response
-	char *body;
-	body = strstr(buf, "<!DOCTYPE html>");
-	printf("%s\n", body);	
-	printf("length %ld\n", strlen(body));
+	free(new);
+	//apo header thelw na dw code kai length , code gia na dw an tha to dextw kai length gia malloc
+	//Newbuf-> pairnei ta extra poy phre o buf prin kai ta upoloipa apo th selida
+	//kai ta apothikeyei sto arxeio poy prepei na ftiaxtei
+	char *Newbuf = malloc(sizeof(char)*(response_len+1));
+	memcpy(Newbuf, rr, strlen(rr));
+
+	total_data = strlen(rr);
+	while ((data_read = read(sock,&Newbuf[total_data],(response_len+1)-total_data)) > 0)
+		total_data += data_read;
+	printf("TOTAL_DATA %d \n", total_data);
+	printf("-------------------------\n");
+	printf("%s\n", Newbuf);
+	printf("-------------------------\n");
+
 	printf("Code %d , len %d\n", code,response_len);
+
+	//pws ftiaxnw ta arxeia ? kai pws mpainoun sto swsto directory
 	fwrite(Newbuf, 1, strlen(Newbuf), fp);
 
 	close(sock); /* Close socket and exit */
