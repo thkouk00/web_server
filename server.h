@@ -46,8 +46,9 @@
 
 struct arg_struct
 {
-	int arg1;
-	int arg2;
+	int sock;
+	int c_sock;
+	char *root_dir;
 };
 
 void sigchld_handler(int sig);

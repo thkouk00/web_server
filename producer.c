@@ -3,8 +3,8 @@
 void* producer(void* args)
 {
 	struct arg_struct* arg = args;
-	int sock = arg->arg1;
-	int c_sock = arg->arg2;
+	int sock = arg->sock;
+	int c_sock = arg->c_sock;
 	int newsock;
 	int highfd, res;
 	socklen_t clientlen, cmdlen;

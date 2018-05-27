@@ -36,6 +36,8 @@ extern struct sockaddr_in server;
 
 typedef struct args_struct{
 	int fd;
+	int port;
+	char *host;
 	struct sockaddr *serverptr;
 } args_struct;
 

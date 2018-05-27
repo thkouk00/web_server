@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 	url_queue *queue = NULL;
 	struct sockaddr_in server;
 	struct sockaddr *serverptr = (struct sockaddr*)&server;
-	struct hostent *rem;
+	// struct hostent *rem;
 	pthread_t *tid; 
 	DIR* dir = opendir(save_dir);
 	struct dirent *de;
@@ -103,25 +103,30 @@ int main(int argc, char* argv[])
 		// 	printf("ERROR\n");
 	}
 
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-		perror("Failed to create socket");
-	if ((rem = gethostbyname(host_or_IP)) == NULL)
-	{	
-		herror("gethostbyname"); 
-		exit(1);
-	}
-	server.sin_family = AF_INET;
-	memcpy(&server.sin_addr, rem->h_addr, rem->h_length);
-	server.sin_port = htons(port);
+	// if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	// 	perror("Failed to create socket");
+	// if ((rem = gethostbyname(host_or_IP)) == NULL)
+	// {	
+	// 	herror("gethostbyname"); 
+	// 	exit(1);
+	// }
+	// server.sin_family = AF_INET;
+	// memcpy(&server.sin_addr, rem->h_addr, rem->h_length);
+	// server.sin_port = htons(port);
 
 	//insert url in queue
 	push_c(&queue, starting_URL);
+	count = 1;
+	print_c(&queue);
+	printf("PERSASASAS\n");
 	if (nthr == 0)
 		nthr = 2;
 	tid = malloc(sizeof(pthread_t)*nthr);
 	// arguments to sent to worker threads
 	args_struct arg;
 	arg.fd = sock;
+	arg.port = port;
+	arg.host = host_or_IP;
 	arg.serverptr = serverptr;
 	//edw tha prepei na mpoun ta threads , connect/thread , 1 mono fdsock
 	for (i=0;i<nthr;i++)
@@ -137,18 +142,18 @@ int main(int argc, char* argv[])
 	// FILE *fp = fopen("/home/thanos/Desktop/save_dir/file.html", "w");
 	//pairnw ta aitimata apo thn oura logika , tha to dw auto
 	//ftiaxnw to minima
-	// snprintf(buf, sizeof(buf), REQUEST,"/site0/page0_27199.html","/home/thanos/Desktop/root_dir");
-	// //to steila
+	// snprintf(buf, sizeof(buf), REQUEST,"/site0/page0_27199.html",host_or_IP);
+	// // //to steila
 	// if (write(sock,buf,strlen(buf))<0)
 	// 	printf("Fail req\n");
-	// //kleinw to socket gia grapsimo , mporei na xreiazetai mporei kai oxi
+	// // //kleinw to socket gia grapsimo , mporei na xreiazetai mporei kai oxi
 	// shutdown(sock, SHUT_WR);
 		
 	// int data_read=0;
 	// int total_data=0;
 	// char *rr=NULL;
 	// memset(buf, 0, sizeof(buf));
-	// //diabazei header + kati akoma
+	// // //diabazei header + kati akoma
 	// while ((data_read = read(sock,&buf[total_data],sizeof(buf)-total_data)) > 0)
 	// {
 	// 	total_data += data_read;
@@ -156,7 +161,7 @@ int main(int argc, char* argv[])
 	// 	// if ((rr = strstr(buf, "\r\n\r\n"))!=NULL)
 	// 	// 	break; 
 	// } 
-	// //brisko pou xekina to body tou minimatos
+	// // //brisko pou xekina to body tou minimatos
 	// rr = strstr(buf,"<!DOCTYPE html>");
 	// printf("%s\n", rr);
 	// printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(rr));
@@ -195,12 +200,13 @@ int main(int argc, char* argv[])
 	// printf("Code %d , len %d\n", code,response_len);
 
 	// //grapse sto arxeio eite th vrhke th selida eite oxi
-	// if (code > 0)
-	// {
-	// 	//pws ftiaxnw ta arxeia ? kai pws mpainoun sto swsto directory
-	// 	fwrite(Newbuf, 1, strlen(Newbuf), fp);
-	// }
-
+	// // if (code > 0)
+	// // {
+	// // 	//pws ftiaxnw ta arxeia ? kai pws mpainoun sto swsto directory
+	// // 	fwrite(Newbuf, 1, strlen(Newbuf), fp);
+	// // }
+	for (int i=0;i<nthr;i++)
+		pthread_join(tid[i], NULL);
 	// close(sock); /* Close socket and exit */
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	//free memory

@@ -4,14 +4,47 @@ void* worker_client(void* args)
 {
 	char buf[270];
 	args_struct *arg = (args_struct*)args;
-	int sockfd = arg->fd;
-	struct sockaddr *serverptr = arg->serverptr;
-	while(1)
-	{
+	// int sockfd = arg->fd;
+	int sockfd;
+	int port = arg->port;
+	char *host = arg->host;
+	struct sockaddr_in server;
+	struct sockaddr *serverptr = (struct sockaddr*)&server;; //= arg->serverptr;
+	char *cur_url;
+	struct hostent *rem;
+	// while(1)
+	// {
+
 		printf("Thread %ld\n", pthread_self());
+		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+			perror("Failed to create socket");
+		if ((rem = gethostbyname(host)) == NULL)
+		{	
+			herror("gethostbyname"); 
+			exit(1);
+		}
+		server.sin_family = AF_INET;
+		memcpy(&server.sin_addr, rem->h_addr, rem->h_length);
+		server.sin_port = htons(port);
+
 		if (connect(sockfd, serverptr, sizeof(server)) == -1)
 			perror("Failed to connect");
 
+		//pop head from queue , if queue not empty , take siteX/... and form the msg
+		//must free cur_url after i am done
+		// if (count > 0)
+		// {
+		// 	printf("EDWWW\n");
+		// 	print_c(&queue);
+		// 	// pop_head_c(&queue, &cur_url);
+		// }
+		// else
+		// 	exit(1);
+		printf("HRE\n");
+		// printf("URL: %s\n", cur_url);
+		//construct GET request
+		snprintf(buf, sizeof(buf), REQUEST,cur_url,host);
+		printf("BUF: %s\n", buf);
 		snprintf(buf, sizeof(buf), REQUEST,"/site0/page0_27199.html","/home/thanos/Desktop/root_dir");
 		//to steila
 		if (write(sockfd,buf,strlen(buf))<0)
@@ -69,6 +102,31 @@ void* worker_client(void* args)
 
 		printf("Code %d , len %d\n", code,response_len);
 
+		//pairnw apo Newbuf ola ta links kai ta vazw sthn oura
+		const char *needle = "<a href=";
+		char *p = Newbuf, *tmpp;
+		char link[100];
+		int i;
+		while ( (p=strstr(p,needle)) != NULL ) 
+   		{
+			printf("#.%s\n",p);
+	        p += strlen(needle);
+	        tmpp = p;
+	        while (*tmpp != '>')
+	        {	
+	        	link[i] = *tmpp;
+	        	i++;
+	        	tmpp++;
+	        }
+	        link[strlen(link)] = '\0';
+	        //edw to link einai etoimo , push it in queue
+	        push_c(&queue, link);
+	    	printf("\n%s\n", link);
+	    	//reset buffer, ready for next link
+	    	memset(link, 0, sizeof(link));
+	    	i=0;
+	        // total++; //total occurences of string searched
+    	}
 		FILE *fp = fopen("/home/thanos/Desktop/save_dir/file.html", "w");
 		//grapse sto arxeio eite th vrhke th selida eite oxi
 		if (code > 0)
@@ -80,5 +138,5 @@ void* worker_client(void* args)
 
 		close(sockfd); /* Close socket and exit */
 			
-	}
+	// }
 }

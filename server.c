@@ -109,14 +109,15 @@ int main(int argc , char* argv[])
 	// struct for passing arguments
 	//useless i think , check it later
 	struct arg_struct arg_strct;
-	arg_strct.arg1 = sock;
-	arg_strct.arg2 = c_sock;
+	arg_strct.sock = sock;
+	arg_strct.c_sock = c_sock;
+	arg_strct.root_dir = root_dir;
 
 	// thread pool 
 	tid = malloc(sizeof(pthread_t)*nthr);
 	//create #nthr threads
 	for (int i=0;i<nthr;i++)
-		pthread_create(tid+i, 0, worker, (void*)&sock);
+		pthread_create(tid+i, 0, worker, (void*)&arg_strct);
 	//create one thread in order to insert fd to buff
 	pthread_create(&prod, 0, producer, (void*)&arg_strct);
 	ftime(&start);			//start timer

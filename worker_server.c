@@ -2,7 +2,8 @@
 
 void* worker(void* arg)
 {
-	int *sock = arg;
+	struct arg_struct *arg_strct = (void*)arg;
+	int sock = arg_strct->sock;					//den to xrisimopoiw kapou
 	int fd;
 	int loop, valid, invalid, res;
 	char requestbuff[1000]; 			// NAME_MAX + 13 for standard chars (GET , HTTP etc) + 1 for \0
@@ -12,13 +13,14 @@ void* worker(void* arg)
 	char date[32];
 	char responsebuf[400];
 	char fileresponse;
+	char *root_dir = arg_strct->root_dir;
 	
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
 		while (count == 0 && !shtdwn_flag)
 		{
-			printf("WOKE UP %ld\n",pthread_self());
+			// printf("WOKE UP %ld\n",pthread_self());
 			pthread_cond_wait(&cond_nonempty, &mtx);
 		}
 		// take first fd from queue
@@ -89,9 +91,10 @@ void* worker(void* arg)
 		strftime(date, sizeof(date), "%a, %d %b %Y %H:%M:%S %Z", &tm);
 		if (!invalid)
 		{
-			path = malloc(sizeof(char)*(strlen(target)+strlen(host)));
+			// path = malloc(sizeof(char)*(strlen(target)+strlen(host)));
+			path = malloc(sizeof(char)*(strlen(target)+strlen(root_dir)));
+			sprintf(path, "%s%s",root_dir,target);
 			printf("PATH is %s\n", path);
-			sprintf(path, "%s%s",host,target);
 			// printf("Path is %s\n", path);
 			//check if file exists and if we have rights to read it
 			if ((res = access(path, F_OK)) == 0)
