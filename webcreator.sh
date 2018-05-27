@@ -188,6 +188,8 @@ do
 				let "lineswritten = lineswritten + package + 1"
 				((--linesleft))
 			fi
+			#change line with <br>
+			echo "<br>" >> ${names[$counter]}.html
 			echo "#   Adding link to ${root_dir}site${i}/${names[$counter]}.html"
 			echo '	<a href='${1}${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
 			((++combcounter))
