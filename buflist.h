@@ -23,6 +23,8 @@ typedef struct client_struct{
 
 void push_c(url_queue** , char*);
 void pop_head_c(url_queue**,char**);
+int search_c(url_queue**, char*);
+int urls_left(url_queue**);
 void print_c(url_queue**);
 void freelist_c(url_queue**);
 

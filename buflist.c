@@ -92,6 +92,8 @@ void push_c(url_queue** head, char* url)
 // pop first node of queue
 void pop_head_c(url_queue** head,char** url)
 {
+	if (*head == NULL)
+		exit(1);
 	url_queue *cur = *head;
 	url_queue *tmp = NULL;
 	if (cur->next)
@@ -122,6 +124,22 @@ void freelist_c(url_queue** head)
 	*head = NULL;
 }
 
+int search_c(url_queue** head, char* url)
+{
+	if (*head == NULL)
+		return -2;
+	url_queue *cur = *head;
+	while (cur->next)
+	{
+		cur = cur->next;
+		// url found
+		if (!strcmp(cur->url,url))
+			return 1;
+	}
+	// url not found
+	return -1;
+}
+
 // print all nodes in queue
 void print_c(url_queue** head)
 {
@@ -133,4 +151,18 @@ void print_c(url_queue** head)
 		cur = cur->next;
 		printf("Url is %s\n", cur->url);
 	}
+}
+
+int urls_left(url_queue** head)
+{
+	if (*head == NULL)
+		return -1;
+	url_queue *cur = *head;
+	int count = 0;
+	while (cur->next)
+	{
+		cur = cur->next;
+		count++;
+	}
+	return count;
 }

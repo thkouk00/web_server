@@ -20,8 +20,9 @@
 extern fd_set set, readfds;
 extern short int shtdwn_flag;
 // must be set to NULL  
-extern url_queue *queue;
-extern int count;
+extern url_queue *queue; 
+extern url_queue *checked_urls;
+extern int count, working_threads;
 extern int served_pages, total_bytes;			//for stats 
 extern pthread_t *tid;
 extern pthread_mutex_t mtx , clock_mtx , stat_mtx;
@@ -38,7 +39,8 @@ typedef struct args_struct{
 	int fd;
 	int port;
 	char *host;
-	struct sockaddr *serverptr;
+	// struct sockaddr *serverptr;
+	url_queue *queue;
 } args_struct;
 
 void* worker_client(void*);

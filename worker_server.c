@@ -188,7 +188,7 @@ void* worker(void* arg)
 		// close(fd);
 
 		//check if needed lock
-		
+		// shutdown(fd, SHUT_RD);
 		close(fd);
 		// if (shtdwn_flag)
 		// {

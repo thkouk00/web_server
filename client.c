@@ -14,8 +14,9 @@ void Usage(char *prog_name)
 fd_set set, readfds;
 short int shtdwn_flag;
 // must be set to NULL  
-url_queue *queue;
-int count;
+url_queue *queue = NULL;
+url_queue *checked_urls = NULL;
+int count, working_threads = 0;
 int served_pages, total_bytes;			//for stats 
 pthread_t *tid;
 pthread_mutex_t mtx , clock_mtx , stat_mtx;
@@ -86,7 +87,7 @@ int main(int argc, char* argv[])
 	
 	int i, sock;
 	char buf[270];
-	url_queue *queue = NULL;
+	// url_queue *queue = NULL;
 	struct sockaddr_in server;
 	struct sockaddr *serverptr = (struct sockaddr*)&server;
 	// struct hostent *rem;
@@ -107,8 +108,16 @@ int main(int argc, char* argv[])
 	}
 
 
+	//initialize mutexes and cond_var
+	pthread_mutex_init(&mtx, 0);
+	pthread_mutex_init(&clock_mtx, 0);
+	pthread_mutex_init(&stat_mtx, 0);
+	pthread_cond_init(&cond_nonempty, 0);
+	// pthread_mutex_init(&shtdw_mtx, 0);
+	
 	//insert url in queue
 	push_c(&queue, starting_URL);
+	push_c(&checked_urls, starting_URL);
 	count = 1;
 	print_c(&queue);
 	printf("PERSASASAS\n");
@@ -120,13 +129,15 @@ int main(int argc, char* argv[])
 	arg.fd = sock;
 	arg.port = port;
 	arg.host = host_or_IP;
-	arg.serverptr = serverptr;
+	// arg.serverptr = serverptr;
 	//edw tha prepei na mpoun ta threads , connect/thread , 1 mono fdsock
 	for (i=0;i<nthr;i++)
 		pthread_create(tid+i, 0, worker_client, (void*)&arg);
+	//thread gia command line
 	
 	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
+	printf("EFTASA EDW\n");
 	// close(sock); /* Close socket and exit */
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	//free memory
