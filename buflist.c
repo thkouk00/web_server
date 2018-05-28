@@ -37,6 +37,8 @@ void pop_head(buflist** head,int *fd)
 // free queue by deleting all nodes
 void freelist(buflist** head)
 {
+	if (*head == NULL)
+		exit(1);
 	buflist *cur = *head;
 	buflist *tmp = *head;
 	while (cur->next)

@@ -4,10 +4,12 @@ void* child2(void* nsock)
 {
 	int *command_sock = nsock;
 	char buf[256];
+	memset(buf, 0, sizeof(buf));
 	printf("Command port printing\n");
 	//response through socket not stdout
 	while (read(*command_sock, buf, 256)>0)
 	{	
+		printf("COMMAND\n");
 		buf[strlen(buf)-1] = '\0';
 		if(strlen(buf)==0)
 			break;
@@ -30,14 +32,14 @@ void* child2(void* nsock)
 		{
 			printf("Shutting down server\n");
 			shtdwn_flag = 1;
-			// close(*command_sock);
+			close(*command_sock);
 			break;
 		}
 
 		printf("Commandport received : %s\n", buf);
 		memset(buf, 0, 256);
 	}
-
+	printf("Epistrefw main\n");
 	// write(*command_sock,"Response from server",strlen("Response from server"));
 	return (void*)1;
 }

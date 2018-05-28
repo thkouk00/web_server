@@ -21,7 +21,20 @@ void* worker(void* arg)
 		while (count == 0 && !shtdwn_flag)
 		{
 			// printf("WOKE UP %ld\n",pthread_self());
+			printf("Prin wait flag is %d and thread %ld\n", shtdwn_flag,pthread_self());
 			pthread_cond_wait(&cond_nonempty, &mtx);
+		}
+		if (shtdwn_flag)
+		{
+			// shutdown(fd, SHUT_RD);
+			// pthread_mutex_lock(&shtdw_mtx);
+			// printf("MPIKAKAKAKA worker\n");
+			// pthread_cond_broadcast(&cond_nonempty);
+			// pthread_mutex_unlock(&shtdw_mtx);
+			printf("Worker %ld in\n", pthread_self());
+			pthread_mutex_unlock(&mtx);
+			// pthread_exit((void*)1);
+			break;
 		}
 		// take first fd from queue
 		pop_head(&buffer, &fd);
@@ -74,6 +87,8 @@ void* worker(void* arg)
 				{
 					printf("INVALID request\n");
 					invalid = 1;
+					//***to evala meta apo valgrind na to dokimasw,mporei na skasei***
+					free(tmp);
 					break;
 				}
 				free(tmp);
@@ -92,8 +107,12 @@ void* worker(void* arg)
 		if (!invalid)
 		{
 			// path = malloc(sizeof(char)*(strlen(target)+strlen(host)));
-			path = malloc(sizeof(char)*(strlen(target)+strlen(root_dir)));
-			sprintf(path, "%s%s",root_dir,target);
+			//evala +1
+			target[strlen(target)] = '\0';
+			path = malloc(sizeof(char)*(strlen(target)+strlen(root_dir)+1));
+			memset(path, 0, (strlen(target)+strlen(root_dir)+1));
+			sprintf(path,"%s%s",root_dir,target);
+			path[strlen(path)] = '\0';
 			printf("PATH is %s\n", path);
 			// printf("Path is %s\n", path);
 			//check if file exists and if we have rights to read it
@@ -122,6 +141,8 @@ void* worker(void* arg)
 					// send response to client
 					write(fd, responsebuf, strlen(responsebuf));
 					char *tmpbuf = malloc(sizeof(char)*fsize);
+					// kai ayto htan extra
+					memset(tmpbuf, 0, fsize);
 					fread(tmpbuf,fsize,1,fp);
 					while (total_bytes_written != fsize)
 					{
@@ -136,6 +157,7 @@ void* worker(void* arg)
 					total_bytes += fsize;
 					pthread_mutex_unlock(&stat_mtx);
 					free(tmpbuf);
+					fclose(fp);
 				}
 			}
 			else
@@ -149,6 +171,7 @@ void* worker(void* arg)
 			
 			// free path
 			free(path);
+			path = NULL;
 		}
 		//reset variables for next fd
 		if (target)
@@ -167,16 +190,18 @@ void* worker(void* arg)
 		//check if needed lock
 		
 		close(fd);
-		if (shtdwn_flag)
-		{
-			// shutdown(fd, SHUT_RD);
-			pthread_mutex_lock(&shtdw_mtx);
-			printf("MPIKAKAKAKA worker\n");
-			pthread_cond_broadcast(&cond_nonempty);
-			pthread_exit((void*)1);
-			pthread_mutex_unlock(&shtdw_mtx);
-			break;
-		}
+		// if (shtdwn_flag)
+		// {
+		// 	// shutdown(fd, SHUT_RD);
+		// 	pthread_mutex_lock(&shtdw_mtx);
+		// 	printf("MPIKAKAKAKA worker\n");
+		// 	pthread_cond_broadcast(&cond_nonempty);
+		// 	pthread_mutex_unlock(&shtdw_mtx);
+		// 	// pthread_exit((void*)1);
+		// 	break;
+		// }
 	}
 	printf("---EXW APO WHILE\n");
+	pthread_exit((void*)1);
+	// return (void*)1;
 }

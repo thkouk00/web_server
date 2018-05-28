@@ -53,6 +53,7 @@ int main(int argc , char* argv[])
 			else if (!strcmp("-d",argv[i]))
 			{
 				root_dir = malloc(sizeof(char)*(strlen(argv[i+1])+1));
+				memset(root_dir, 0, strlen(argv[i+1])+1);
 				memcpy(root_dir, argv[i+1], strlen(argv[i+1]));
 			}
 		}
@@ -102,7 +103,8 @@ int main(int argc , char* argv[])
 	if (listen(sock,128) == -1)
 		perror("Failed: listen");
 
-	if (listen(c_sock,1) == -1)
+	//htan 1
+	if (listen(c_sock,5) == -1)
 		perror("Failed: listen");
 	printf("Listening for connections to port %d and commands from port %d\n", port,command_port);
 	
@@ -121,21 +123,28 @@ int main(int argc , char* argv[])
 	//create one thread in order to insert fd to buff
 	pthread_create(&prod, 0, producer, (void*)&arg_strct);
 	ftime(&start);			//start timer
-
+	printf("GIRISA %ld\n", pthread_self());
 	// wait for connection via netcat
 	// to take commands
 	// close server when "SHUTDOWN" arrive from cmd
-	while (1)
-	{	
-		cmdlen = sizeof(cmd);
-		if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
-			perror("Failed: accept for command port");
+	if (!shtdwn_flag)
+	{
+		while (1)
+		{	
+			cmdlen = sizeof(cmd);
+			if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
+				perror("Failed: accept for command port");
 
-		child2(&command_sock);
-		if (shtdwn_flag)
-		{
-			shutdown(command_sock, SHUT_RDWR);
-			break;
+			child2(&command_sock);
+			if (shtdwn_flag)
+			{
+				printf("MPIKA AFTER CHLD2\n");
+				pthread_cond_broadcast(&cond_nonempty);
+				// shutdown(command_sock, SHUT_RDWR);
+				//wake up select
+				shutdown(sock, SHUT_RD);
+				break;
+			}
 		}
 	}	
 	printf("JERE %ld\n",pthread_self());
@@ -145,6 +154,12 @@ int main(int argc , char* argv[])
 	printf("EDW\n");
 	pthread_join(prod, NULL);
 	printf("EDW2\n");
+	if (pthread_mutex_destroy(&mtx)<0)
+		printf("MUTEX < 0\n");;
+	pthread_mutex_destroy(&clock_mtx);
+	pthread_mutex_destroy(&stat_mtx);
+	pthread_mutex_destroy(&shtdw_mtx);
+	pthread_cond_destroy(&cond_nonempty);
 	//free queue
 	freelist(&buffer);
 	//free

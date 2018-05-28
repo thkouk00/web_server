@@ -14,7 +14,7 @@ void* worker_client(void* args)
 	struct hostent *rem;
 	// while(1)
 	// {
-
+		memset(buf, 0, sizeof(buf));
 		printf("Thread %ld\n", pthread_self());
 		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 			perror("Failed to create socket");
@@ -70,6 +70,7 @@ void* worker_client(void* args)
 		printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(rr));
 		//takes only header 
 		char *new = malloc(sizeof(char)*(strlen(buf)-strlen(rr)+1));
+		memset(new, 0, strlen(buf)-strlen(rr)+1);
 		memcpy(new, buf, strlen(buf)-strlen(rr));
 		printf("NEW\n%s--",new);
 		//copy of buf , in order no to lose data from strtok
@@ -90,7 +91,9 @@ void* worker_client(void* args)
 		//Newbuf-> pairnei ta extra poy phre o buf prin kai ta upoloipa apo th selida
 		//kai ta apothikeyei sto arxeio poy prepei na ftiaxtei
 		char *Newbuf = malloc(sizeof(char)*(response_len+1));
+		memset(Newbuf, 0, response_len+1);
 		memcpy(Newbuf, rr, strlen(rr));
+		Newbuf[strlen(Newbuf)] = '\0';
 
 		total_data = strlen(rr);
 		while ((data_read = read(sockfd,&Newbuf[total_data],(response_len+1)-total_data)) > 0)
@@ -135,7 +138,7 @@ void* worker_client(void* args)
 			fwrite(Newbuf, 1, strlen(Newbuf), fp);
 			//close file
 		}
-
+		free(Newbuf);
 		close(sockfd); /* Close socket and exit */
 			
 	// }
