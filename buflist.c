@@ -129,6 +129,7 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 	cur->next = NULL;
 	if (search_c(queue2, cur->url) == 1)
 	{
+		printf("EINAI HDH MESA TO %s.\n", cur->url);
 		free(cur->url);
 		cur->url = NULL;
 		free(cur);
@@ -177,6 +178,12 @@ void pop_head_c(url_queue** head,char** url)
 		*url = tmp->url;
 		free(tmp);
 		//free url -> client
+	}
+	printf("EIMAI POP-> %s\n", *url);
+	if (*url == NULL)
+	{
+		printf("PRINTING\n");
+		print_c(head);
 	}
 }
 

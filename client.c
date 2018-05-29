@@ -137,7 +137,17 @@ int main(int argc, char* argv[])
 	for (i=0;i<nthr;i++)
 		pthread_create(tid+i, 0, worker_client, (void*)&arg);
 	//thread gia command line
-	
+	while (1)
+	{
+		if (working_threads == 0 && (urls_left(&queue)) == 0)
+		{
+			printf("EPITELOYS MPIKA EDW\n");
+			pthread_cond_broadcast(&cond_nonempty);
+			pthread_mutex_unlock(&mtx);
+			break;
+		}
+	}
+
 	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
 	printf("EFTASA EDW\n");

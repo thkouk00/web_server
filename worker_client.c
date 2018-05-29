@@ -15,9 +15,9 @@ void* worker_client(void* args)
 	struct hostent *rem;
 	
 	// bzero((char*)&server,sizeof(server));
-	memset(buf, 0, sizeof(buf));
 	while(1)
 	{
+		memset(buf, 0, sizeof(buf));
 		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 			perror("Failed to create socket");
 		if ((rem = gethostbyname(host)) == NULL)
@@ -31,25 +31,37 @@ void* worker_client(void* args)
 
 		if (connect(sockfd, serverptr, sizeof(server)) == -1)
 			perror("Failed to connect");
-		printf("Thread %ld\n", pthread_self());
 
 		pthread_mutex_lock(&mtx);
-		queue_count = urls_left(&queue);
-		printf("QUEUE COUNT %d\n", queue_count);
+		// queue_count = urls_left(&queue);
+		// printf("QUEUE COUNT %d , working_threads %d\n", queue_count,working_threads);
 		//crawling is over
-		if (working_threads == 0 && queue_count == 0)
-		{
-			pthread_cond_broadcast(&cond_nonempty);
-			pthread_mutex_unlock(&mtx);
-			break;
-		}
+		// if (working_threads == 0 && queue_count == 0)
+		// {
+		// 	pthread_cond_broadcast(&cond_nonempty);
+		// 	pthread_mutex_unlock(&mtx);
+		// 	break;
+		// }
+		printf("Thread %ld\n", pthread_self());
 		//wait until queue has link to extract
-		while (count == 0)
+		// while (count == 0)
+		while (urls_left(&queue) == 0)
+		{
+			if (working_threads == 0)
+			{
+				pthread_cond_broadcast(&cond_nonempty);
+				pthread_mutex_unlock(&mtx);
+				pthread_exit((void *)1);
+			}
 			pthread_cond_wait(&cond_nonempty, &mtx);
+		}
+		
 		working_threads++;
+		printf("COUNT IS %d\n", count);
 		//pop head from queue 
 		pop_head_c(&queue, &cur_url);
 		printf("HRERE %s\n",cur_url);
+		//edw pairnei null kapoia stigmi kai xtipaei error
 		print_c(&queue);
 		count--;
 		//must free cur_url after i am done
@@ -116,7 +128,7 @@ void* worker_client(void* args)
 		printf("TOTAL_DATA %d \n", total_data);
 		printf("-------------------------\n");
 		// body[strlen(body)] = '\0';
-		printf("%s\n", body);
+		// printf("%s\n", body);
 		printf("-------------------------\n");
 
 		printf("Code %d , len %d\n", code,response_len);
@@ -124,24 +136,24 @@ void* worker_client(void* args)
 		//pairnw apo Newbuf ola ta links kai ta vazw sthn oura
 		//htan const kai *
 		const char needle[] = "<a href=";
-		char *p = body, *tmpp;
+		char *p = body, *tmpp=NULL;
 		char link[150];
 		int i = 0;
 		memset(link, 0, sizeof(link));
 		printf("***************************\n");
-		printf("BODY:: %s\n", p);
-		printf("***************************\n");
+		// printf("BODY:: %s\n", p);
+		// printf("***************************\n");
 		while ( (p=strstr(p,needle)) != NULL ) 
    		{
-			printf("#.%s\n",p);
+			// printf("#.%s\n",p);
 	        p += strlen(needle);
-	        printf("##.%s\n",p);
+	        // printf("##.%s\n",p);
 	        tmpp = p;
-	        printf("&&EINAI %c\n",*tmpp);
+	        // printf("&&EINAI %c\n",*tmpp);
 	        while (*tmpp != '>')
 	        {	
 	        	link[i] = *tmpp;
-	        	printf("###. %c\n",link[i]);
+	        	// printf("###. %c\n",link[i]);
 	        	i++;
 	        	tmpp++;
 	        }
@@ -149,28 +161,20 @@ void* worker_client(void* args)
 	        //edw to link einai etoimo , push it in queue
 	    	printf("TELEIOSA TO LINK\n%s\n",link);
 	        pthread_mutex_lock(&mtx);
-	    	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-	    	// if (search_c(&queue, link) == 1)
-	    	// {
-	    	// 	printf("SEARCH -1\n");
-	    	// 	// memset(link, 0, sizeof(link));
-	    	// 	i = 0;
-	    	// 	pthread_cond_broadcast(&cond_nonempty);
-	    	// 	pthread_mutex_unlock(&mtx);
-	    	// 	continue;
-	    	// }
 	       	push_c(&queue, &checked_urls, link, cur_url);
 	        // push_c(&checked_urls, link,cur_url);
-	        print_c(&queue);
-	        printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+	        // print_c(&queue);
 	        count++;
-	        pthread_cond_broadcast(&cond_nonempty);
+	        // if (count)
+	        if (urls_left(&queue)==0)
+	        	pthread_cond_broadcast(&cond_nonempty);
 	        pthread_mutex_unlock(&mtx);
 	    	//reset buffer, ready for next link
 	    	memset(link, 0, sizeof(link));
 	    	i=0;
 	        // total++; //total occurences of string searched
     	}
+    	printf("BGHJA APO WHILE\n");
  		char *path_to_file = malloc(sizeof(char)*(strlen(save_dir)+strlen(cur_url)+1));
  		memset(path_to_file, 0, strlen(save_dir)+strlen(cur_url)+1);
  		memcpy(path_to_file, save_dir, strlen(save_dir));
@@ -205,7 +209,6 @@ void* worker_client(void* args)
 			perror("fopen Error\n");
 		//grapse sto arxeio eite th vrhke th selida eite oxi
 		printf("Path %s.\n", path_to_file);
- 		printf("FTANW EDW\nBODY^:\n");
 		// printf("%s\n^BODY\n", body);
 		if (code > 0)
 			fwrite(body, 1, strlen(body), fp);
@@ -217,6 +220,7 @@ void* worker_client(void* args)
 		pthread_mutex_lock(&mtx);
 		working_threads--;
 		pthread_mutex_unlock(&mtx);
+		printf("PAME GIA NEXT LOOP\n");
 		
 	}
 	return (void*)1;
