@@ -4,7 +4,7 @@
 make_set()
 {
 	cur_site=$1
-	#echo Received $cur_site
+	echo Received $cur_site
 	#finds first number of string , site id
 	sid=`echo "$cur_site" | grep -oP '^[^0-9]*\K[0-9]+'`
 	setF=()
@@ -43,7 +43,7 @@ make_set()
 			done
 			#pare ton arithmo tou
 			tmpid=`echo "${setQ[$rand]}" | grep -oP '^[^0-9]*\K[0-9]+'`
-			combined[$y]=site${tmpid}/${setQ[$rand]}
+			combined[$y]=../site${tmpid}/${setQ[$rand]}
 			unset 'setQ[$rand]'
 			#cho RANDQ IS $rand
 			#echo ${combined[$y]} or ${setQ[$rand]}
@@ -64,12 +64,16 @@ make_set()
 				let "rand=((0+ $RANDOM % $rr))"
 				#exit 1
 			done
-			combined[$y]=site${sid}/${setF[$rand]}
+			#combined[$y]=site${sid}/${setF[$rand]}
+			combined[$y]=${setF[$rand]}
+			echo "COMBINED1 ${combined[$y]}"
 			unset 'setF[$rand]'
 		else									#if setF has only one element then
 			combined[$y]=${setF[0]}				#take the element
 			((++y))								#and 
-			combined[$y]=site${sid}/${cur_site}			#take page that we work on
+			#combined[$y]=site${sid}/${cur_site}			#take page that we work on
+			combined[$y]=${cur_site}
+			echo "COMBINED2 ${combined[$y]}"
 			break
 		fi
 		#echo RANDF IS $rand
@@ -191,7 +195,8 @@ do
 			#change line with <br>
 			echo "<br>" >> ${names[$counter]}.html
 			echo "#   Adding link to ${root_dir}site${i}/${names[$counter]}.html"
-			echo '	<a href='${1}${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
+			#echo '	<a href='${1}${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
+			echo '	<a href='${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
 			((++combcounter))
 		done
 		#close html headers

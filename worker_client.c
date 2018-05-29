@@ -15,22 +15,22 @@ void* worker_client(void* args)
 	
 	// bzero((char*)&server,sizeof(server));
 	memset(buf, 0, sizeof(buf));
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-		perror("Failed to create socket");
-	if ((rem = gethostbyname(host)) == NULL)
-	{	
-		herror("gethostbyname"); 
-		exit(1);
-	}
-	server.sin_family = AF_INET;
-	memcpy(&server.sin_addr, rem->h_addr, rem->h_length);
-	server.sin_port = htons(port);
-
-	if (connect(sockfd, serverptr, sizeof(server)) == -1)
-		perror("Failed to connect");
 	while(1)
 	{
-		printf("Thread %ld\n", pthread_self());
+		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+			perror("Failed to create socket");
+		if ((rem = gethostbyname(host)) == NULL)
+		{	
+			herror("gethostbyname"); 
+			exit(1);
+		}
+		server.sin_family = AF_INET;
+		memcpy(&server.sin_addr, rem->h_addr, rem->h_length);
+		server.sin_port = htons(port);
+
+		if (connect(sockfd, serverptr, sizeof(server)) == -1)
+			perror("Failed to connect");
+			printf("Thread %ld\n", pthread_self());
 
 		pthread_mutex_lock(&mtx);
 		//crawling is over
@@ -47,12 +47,13 @@ void* worker_client(void* args)
 		//pop head from queue 
 		pop_head_c(&queue, &cur_url);
 		printf("HRERE %s\n",cur_url);
+		print_c(&queue);
 		count--;
 		//must free cur_url after i am done
 		pthread_mutex_unlock(&mtx);
-		
 		//construct GET request
 		snprintf(buf, sizeof(buf), REQUEST,cur_url,host);
+
 		printf("BUF: %s\n", buf);
 		buf[strlen(buf)] = '\0';
 		//send GET request
@@ -122,34 +123,41 @@ void* worker_client(void* args)
 		const char needle[] = "<a href=";
 		char *p = body, *tmpp;
 		char link[150];
-		int i;
+		int i = 0;
+		memset(link, 0, sizeof(link));
+		printf("***************************\n");
+		printf("BODY:: %s\n", p);
+		printf("***************************\n");
 		while ( (p=strstr(p,needle)) != NULL ) 
    		{
 			printf("#.%s\n",p);
 	        p += strlen(needle);
-	        // printf("##.%s\n",p);
+	        printf("##.%s\n",p);
 	        tmpp = p;
+	        printf("&&EINAI %c\n",*tmpp);
 	        while (*tmpp != '>')
 	        {	
 	        	link[i] = *tmpp;
-	        	// printf("###. MPIKAA\n");
+	        	printf("###. %c\n",link[i]);
 	        	i++;
 	        	tmpp++;
 	        }
 	        link[strlen(link)] = '\0';
 	        //edw to link einai etoimo , push it in queue
-	    	printf("TELEIOSA TO LINK");
+	    	printf("TELEIOSA TO LINK\n%s\n",link);
 	        pthread_mutex_lock(&mtx);
 	    	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-	    	if (search_c(&queue, link) == -1)
+	    	if (search_c(&queue, link) == 1)
 	    	{
 	    		printf("SEARCH -1\n");
+	    		// memset(link, 0, sizeof(link));
+	    		i = 0;
 	    		pthread_cond_broadcast(&cond_nonempty);
 	    		pthread_mutex_unlock(&mtx);
 	    		continue;
 	    	}
-	        push_c(&queue, link);
-	        push_c(&checked_urls, link);
+	        push_c(&queue, link,cur_url);
+	        push_c(&checked_urls, link,cur_url);
 	        print_c(&queue);
 	        printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 	        count++;
@@ -160,15 +168,46 @@ void* worker_client(void* args)
 	    	i=0;
 	        // total++; //total occurences of string searched
     	}
-    	// min jexasw fclose 
-		// FILE *fp = fopen("/home/thanos/Desktop/save_dir/file.html", "w");
+ 		char *path_to_file = malloc(sizeof(char)*(strlen(save_dir)+strlen(cur_url)+1));
+ 		memset(path_to_file, 0, strlen(save_dir)+strlen(cur_url)+1);
+ 		memcpy(path_to_file, save_dir, strlen(save_dir));
+ 		strcat(path_to_file, cur_url);
+ 		path_to_file[strlen(path_to_file)] = '\0';
+		// FILE *fp = fopen(path_to_file, "w");
+		// if (fp == NULL)
+		// 	perror("fopen Error\n");
+		char dir[50];
+		memset(dir, 0, sizeof(dir));
+		char *temp = cur_url;
+		int dir_char_count = 0;
+		i=0;
+		while (dir_char_count != 2 && *temp != '\0')
+		{
+			if (*temp == '/')
+				dir_char_count++;
+			dir[i] = *temp;
+			i++;
+			temp++; 
+		}
+		dir[strlen(dir)] = '\0';
+		char *dir_path = malloc(sizeof(char)*(strlen(save_dir)+strlen(dir)+1));
+		memset(dir_path, 0, strlen(save_dir)+strlen(dir)+1);
+		memcpy(dir_path, save_dir, strlen(save_dir));
+		strcat(dir_path, dir);
+		//give dir read/write/search permissions for owner and group
+		//and with read/search permissions for others
+		mkdir(dir_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		FILE *fp = fopen(path_to_file, "w");
+		if (fp == NULL)
+			perror("fopen Error\n");
 		//grapse sto arxeio eite th vrhke th selida eite oxi
-		// if (code > 0)
-		// {
-		// 	//pws ftiaxnw ta arxeia ? kai pws mpainoun sto swsto directory
-		// 	fwrite(body, 1, strlen(body), fp);
-		// 	//close file
-		// }
+		printf("Path %s\n", path_to_file);
+ 		printf("FTANW EDW\nBODY^:\n");
+		// printf("%s\n^BODY\n", body);
+		if (code > 0)
+			fwrite(body, 1, strlen(body), fp);
+		// close file
+		fclose(fp);
 		//server closes sockfd
 		// close(sockfd); /* Close socket and exit */
 		free(body);

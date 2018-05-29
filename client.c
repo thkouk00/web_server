@@ -13,6 +13,7 @@ void Usage(char *prog_name)
 
 fd_set set, readfds;
 short int shtdwn_flag;
+char *save_dir;
 // must be set to NULL  
 url_queue *queue = NULL;
 url_queue *checked_urls = NULL;
@@ -26,7 +27,7 @@ struct sockaddr_in server;
 
 int main(int argc, char* argv[])
 {
-	char *host_or_IP, *save_dir, *starting_URL;
+	char *host_or_IP, *starting_URL;
 	int port, command_port, nthr, args_taken=0;
 
 	if (argc != 12)
@@ -65,12 +66,14 @@ int main(int argc, char* argv[])
 				save_dir = malloc(sizeof(char)*(strlen(argv[i+1])+1));
 				memset(save_dir, 0, strlen(argv[i+1])+1);
 				memcpy(save_dir, argv[i+1], strlen(argv[i+1]));
+				// save_dir[strlen(save_dir)] = '\0';
 			}
 			else if (i == argc-1)
 			{
 				starting_URL = malloc(sizeof(char)*(strlen(argv[i])+1));
 				memset(starting_URL, 0, strlen(argv[i])+1);
 				memcpy(starting_URL, argv[i], strlen(argv[i]));
+				// starting_URL[strlen(starting_URL)] = '\0';
 				args_taken++;
 			}
 		}
@@ -116,8 +119,8 @@ int main(int argc, char* argv[])
 	// pthread_mutex_init(&shtdw_mtx, 0);
 	
 	//insert url in queue
-	push_c(&queue, starting_URL);
-	push_c(&checked_urls, starting_URL);
+	push_c(&queue, starting_URL,NULL);
+	push_c(&checked_urls, starting_URL,NULL);
 	count = 1;
 	print_c(&queue);
 	printf("PERSASASAS\n");

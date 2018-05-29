@@ -19,6 +19,7 @@
 
 extern fd_set set, readfds;
 extern short int shtdwn_flag;
+extern char *save_dir;
 // must be set to NULL  
 extern url_queue *queue; 
 extern url_queue *checked_urls;

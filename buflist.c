@@ -65,9 +65,9 @@ void print(buflist** head)
 }
 
 //for client
-void push_c(url_queue** head, char* url)
+void push_c(url_queue** head, char* url, char* cur_url)
 {
-	
+	int first_push = 0;
 	printf("Phra %s\n", url);
 	// create head if doesn't exist
 	// then insert node at end of list (queue implementation)
@@ -76,15 +76,54 @@ void push_c(url_queue** head, char* url)
 		*head = (struct client_struct*)malloc(sizeof(struct client_struct));
 		(*head)->url = NULL;
 		(*head)->next = NULL;
+		first_push = 1;
 	}
+	
 	url_queue *cur = *head;
 	while (cur->next)
 		cur = cur->next;
 	cur->next = (struct client_struct*)malloc(sizeof(struct client_struct));
 	cur = cur->next;
-	cur->url = malloc(sizeof(char)*(strlen(url)+1));
-	memset(cur->url, 0, strlen(url)+1);
-	memcpy(cur->url,url,strlen(url));
+	//skip ../
+	char *new_url = url;
+	if (!strncmp(new_url, "../", 3))
+	{
+		new_url += 2;
+		cur->url = malloc(sizeof(char)*(strlen(new_url)+1));
+		memset(cur->url, 0, strlen(new_url)+1);
+		memcpy(cur->url,new_url,strlen(new_url));
+	}
+	else		//else concat url with current dir
+	{
+		if (!first_push)
+		{
+			int i, char_count = 0;
+			char *buf = malloc(sizeof(char)*strlen(cur_url));
+			memset(buf, 0, strlen(cur_url));
+			i = 0;
+			while (char_count != 2 && *cur_url!='\0')
+			{
+				if (*cur_url == '/')
+					char_count++;
+				buf[i] = *cur_url;
+				i++;
+				cur_url++;
+			}
+			buf[strlen(buf)] = '\0';
+			printf("BUF %s\n", buf);
+			cur->url = malloc(sizeof(char)*(strlen(buf)+strlen(url)+1));
+			memset(cur->url, 0, strlen(buf)+strlen(url)+1);
+			memcpy(cur->url,buf,strlen(buf));
+			strcat(cur->url, url);
+			free(buf);
+		}
+		else
+		{
+			cur->url = malloc(sizeof(char)*(strlen(url)+1));
+			memset(cur->url, 0, strlen(url)+1);
+			memcpy(cur->url,url,strlen(url));
+		}
+	}
 	cur->url[strlen(cur->url)] = '\0';
 	cur->next = NULL;
 }
