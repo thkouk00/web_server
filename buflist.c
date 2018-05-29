@@ -79,10 +79,11 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 		first_push = 1;
 	}
 	
-	url_queue *cur = *head;
+	url_queue *cur = *head , *temp;
 	while (cur->next)
 		cur = cur->next;
 	cur->next = (struct client_struct*)malloc(sizeof(struct client_struct));
+	temp = cur;
 	cur = cur->next;
 	//skip ../
 	char *new_url = url;
@@ -131,9 +132,13 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 		free(cur->url);
 		cur->url = NULL;
 		free(cur);
+		temp->next = NULL;
 	}
 	else
+	{
+		printf("**MPAINEI** %s.\n", cur->url);
 		push_c2(queue2,cur->url);
+	}
 }
 
 void push_c2(url_queue** head,char* url)
@@ -155,6 +160,7 @@ void push_c2(url_queue** head,char* url)
 	memcpy(cur->url, url, strlen(url));
 	cur->url[strlen(cur->url)] = '\0';
 	cur->next = NULL;
+	printf("CHECKED %s.\n", cur->url);
 }
 
 // pop first node of queue
@@ -217,7 +223,7 @@ void print_c(url_queue** head)
 	while (cur->next)
 	{
 		cur = cur->next;
-		printf("Url is %s\n", cur->url);
+		printf("Url is %s.\n", cur->url);
 	}
 }
 

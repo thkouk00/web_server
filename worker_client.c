@@ -175,7 +175,7 @@ void* worker_client(void* args)
  		memset(path_to_file, 0, strlen(save_dir)+strlen(cur_url)+1);
  		memcpy(path_to_file, save_dir, strlen(save_dir));
  		strcat(path_to_file, cur_url);
- 		path_to_file[strlen(path_to_file)] = '\0';
+ 		// path_to_file[strlen(path_to_file)] = '\0';
 		// FILE *fp = fopen(path_to_file, "w");
 		// if (fp == NULL)
 		// 	perror("fopen Error\n");
@@ -204,7 +204,7 @@ void* worker_client(void* args)
 		if (fp == NULL)
 			perror("fopen Error\n");
 		//grapse sto arxeio eite th vrhke th selida eite oxi
-		printf("Path %s\n", path_to_file);
+		printf("Path %s.\n", path_to_file);
  		printf("FTANW EDW\nBODY^:\n");
 		// printf("%s\n^BODY\n", body);
 		if (code > 0)

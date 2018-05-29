@@ -196,7 +196,8 @@ do
 			echo "<br>" >> ${names[$counter]}.html
 			echo "#   Adding link to ${root_dir}site${i}/${names[$counter]}.html"
 			#echo '	<a href='${1}${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
-			echo '	<a href='${combined[$combcounter]}.html' >LINK</a>' >> ${names[$counter]}.html
+			#evgala to keno apo to >
+			echo '	<a href='${combined[$combcounter]}.html'>LINK</a>' >> ${names[$counter]}.html
 			((++combcounter))
 		done
 		#close html headers
