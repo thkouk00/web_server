@@ -21,7 +21,8 @@ typedef struct client_struct{
 	struct client_struct *next;
 } url_queue;
 
-void push_c(url_queue** , char*, char*);
+void push_c(url_queue** , url_queue**,char*, char*);
+void push_c2(url_queue**,char*);
 void pop_head_c(url_queue**,char**);
 int search_c(url_queue**, char*);
 int urls_left(url_queue**);

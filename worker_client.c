@@ -7,6 +7,7 @@ void* worker_client(void* args)
 	// int sockfd = arg->fd;
 	int sockfd;
 	int port = arg->port;
+	int queue_count = 0;
 	char *host = arg->host;
 	struct sockaddr_in server;
 	struct sockaddr *serverptr = (struct sockaddr*)&server;
@@ -30,11 +31,13 @@ void* worker_client(void* args)
 
 		if (connect(sockfd, serverptr, sizeof(server)) == -1)
 			perror("Failed to connect");
-			printf("Thread %ld\n", pthread_self());
+		printf("Thread %ld\n", pthread_self());
 
 		pthread_mutex_lock(&mtx);
+		queue_count = urls_left(&queue);
+		printf("QUEUE COUNT %d\n", queue_count);
 		//crawling is over
-		if (working_threads == 0 && (urls_left(&queue)==0))
+		if (working_threads == 0 && queue_count == 0)
 		{
 			pthread_cond_broadcast(&cond_nonempty);
 			pthread_mutex_unlock(&mtx);
@@ -147,17 +150,17 @@ void* worker_client(void* args)
 	    	printf("TELEIOSA TO LINK\n%s\n",link);
 	        pthread_mutex_lock(&mtx);
 	    	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-	    	if (search_c(&queue, link) == 1)
-	    	{
-	    		printf("SEARCH -1\n");
-	    		// memset(link, 0, sizeof(link));
-	    		i = 0;
-	    		pthread_cond_broadcast(&cond_nonempty);
-	    		pthread_mutex_unlock(&mtx);
-	    		continue;
-	    	}
-	        push_c(&queue, link,cur_url);
-	        push_c(&checked_urls, link,cur_url);
+	    	// if (search_c(&queue, link) == 1)
+	    	// {
+	    	// 	printf("SEARCH -1\n");
+	    	// 	// memset(link, 0, sizeof(link));
+	    	// 	i = 0;
+	    	// 	pthread_cond_broadcast(&cond_nonempty);
+	    	// 	pthread_mutex_unlock(&mtx);
+	    	// 	continue;
+	    	// }
+	       	push_c(&queue, &checked_urls, link, cur_url);
+	        // push_c(&checked_urls, link,cur_url);
 	        print_c(&queue);
 	        printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 	        count++;

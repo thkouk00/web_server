@@ -65,7 +65,7 @@ void print(buflist** head)
 }
 
 //for client
-void push_c(url_queue** head, char* url, char* cur_url)
+void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 {
 	int first_push = 0;
 	printf("Phra %s\n", url);
@@ -124,6 +124,35 @@ void push_c(url_queue** head, char* url, char* cur_url)
 			memcpy(cur->url,url,strlen(url));
 		}
 	}
+	cur->url[strlen(cur->url)] = '\0';
+	cur->next = NULL;
+	if (search_c(queue2, cur->url) == 1)
+	{
+		free(cur->url);
+		cur->url = NULL;
+		free(cur);
+	}
+	else
+		push_c2(queue2,cur->url);
+}
+
+void push_c2(url_queue** head,char* url)
+{
+	if (*head == NULL)
+	{
+		*head = (struct client_struct*)malloc(sizeof(struct client_struct));
+		(*head)->url = NULL;
+		(*head)->next = NULL;
+	}
+	
+	url_queue *cur = *head;
+	while (cur->next)
+		cur = cur->next;
+	cur->next = (struct client_struct*)malloc(sizeof(struct client_struct));
+	cur = cur->next;
+	cur->url = malloc(sizeof(char)*(strlen(url)+1));
+	memset(cur->url, 0, strlen(url)+1);
+	memcpy(cur->url, url, strlen(url));
 	cur->url[strlen(cur->url)] = '\0';
 	cur->next = NULL;
 }

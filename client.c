@@ -119,8 +119,8 @@ int main(int argc, char* argv[])
 	// pthread_mutex_init(&shtdw_mtx, 0);
 	
 	//insert url in queue
-	push_c(&queue, starting_URL,NULL);
-	push_c(&checked_urls, starting_URL,NULL);
+	push_c(&queue, &checked_urls, starting_URL, NULL);
+	// push_c(&checked_urls, starting_URL,NULL);
 	count = 1;
 	print_c(&queue);
 	printf("PERSASASAS\n");
