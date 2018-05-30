@@ -137,15 +137,15 @@ int main(int argc, char* argv[])
 	for (i=0;i<nthr;i++)
 		pthread_create(tid+i, 0, worker_client, (void*)&arg);
 	//thread gia command line
-	while (1)
+	while (working_threads == 0 && (urls_left(&queue)) == 0)
 	{
-		if (working_threads == 0 && (urls_left(&queue)) == 0)
-		{
+		// if (working_threads == 0 && (urls_left(&queue)) == 0)
+		// {
 			printf("EPITELOYS MPIKA EDW\n");
 			pthread_cond_broadcast(&cond_nonempty);
 			pthread_mutex_unlock(&mtx);
 			break;
-		}
+		// }
 	}
 
 	for (int i=0;i<nthr;i++)
@@ -154,10 +154,12 @@ int main(int argc, char* argv[])
 	// close(sock); /* Close socket and exit */
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	//free memory
+	free(tid);
 	free(host_or_IP);
 	free(save_dir);
 	free(starting_URL);
-	
+	freelist_c(&queue);
+	freelist_c(&checked_urls);
 }
 
 void perror_exit(char *message)

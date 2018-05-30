@@ -33,15 +33,7 @@ void* worker_client(void* args)
 			perror("Failed to connect");
 
 		pthread_mutex_lock(&mtx);
-		// queue_count = urls_left(&queue);
-		// printf("QUEUE COUNT %d , working_threads %d\n", queue_count,working_threads);
-		//crawling is over
-		// if (working_threads == 0 && queue_count == 0)
-		// {
-		// 	pthread_cond_broadcast(&cond_nonempty);
-		// 	pthread_mutex_unlock(&mtx);
-		// 	break;
-		// }
+		
 		printf("Thread %ld\n", pthread_self());
 		//wait until queue has link to extract
 		// while (count == 0)
@@ -51,6 +43,8 @@ void* worker_client(void* args)
 			{
 				pthread_cond_broadcast(&cond_nonempty);
 				pthread_mutex_unlock(&mtx);
+				//mporei na mh xreiazetai
+				// shutdown(sockfd, SHUT_RDWR);
 				pthread_exit((void *)1);
 			}
 			pthread_cond_wait(&cond_nonempty, &mtx);
@@ -79,7 +73,7 @@ void* worker_client(void* args)
 			
 		int data_read=0;
 		int total_data=0;
-		char *start_of_body=NULL;
+		// char *start_of_body=NULL;
 		memset(buf, 0, sizeof(buf));
 		//diabazei header + kati akoma
 		while ((data_read = read(sockfd,&buf[total_data],sizeof(buf)-total_data)) > 0)
@@ -90,12 +84,16 @@ void* worker_client(void* args)
 			// 	break; 
 		} 
 		//brisko pou xekina to body tou minimatos
-		start_of_body = strstr(buf,"<!DOCTYPE html>");
+		char *start_of_body = strstr(buf,"<!DOCTYPE html>");
+		//kai ayto extra alla fainetai na esvise ta error
+		start_of_body[strlen(start_of_body)] = '\0';
 		printf("VGHKA\n");
-		if (start_of_body == NULL)
-			printf("EINAI NULL\n");
-		printf("%s\n", start_of_body);
-		printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(start_of_body));
+		// an einai null pame se epomeni epanalipsi logika
+		// if (start_of_body == NULL)
+		// 	printf("EINAI NULL\n");
+		// else
+		// 	printf("%s\n", start_of_body);
+		// printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(start_of_body));
 		//takes only header 
 		char *header = malloc(sizeof(char)*(strlen(buf)-strlen(start_of_body)+1));
 		memset(header, 0, strlen(buf)-strlen(start_of_body)+1);
@@ -121,7 +119,8 @@ void* worker_client(void* args)
 		char *body = malloc(sizeof(char)*(response_len+1));
 		memset(body, 0, response_len+1);
 		memcpy(body, start_of_body, strlen(start_of_body));
-
+		//extra to vala valgr
+		total_data = 0;
 		total_data = strlen(start_of_body);
 		while ((data_read = read(sockfd,&body[total_data],(response_len+1)-total_data)) > 0)
 			total_data += data_read;
@@ -217,6 +216,8 @@ void* worker_client(void* args)
 		//server closes sockfd
 		// close(sockfd); /* Close socket and exit */
 		free(body);
+		free(dir_path);
+		free(path_to_file);
 		pthread_mutex_lock(&mtx);
 		working_threads--;
 		pthread_mutex_unlock(&mtx);
