@@ -12,7 +12,7 @@ void Usage(char *prog_name)
 }
 
 fd_set set, readfds;
-short int shtdwn_flag;
+short int shtdwn_flag, exit_flag;
 char *save_dir;
 // must be set to NULL  
 url_queue *queue = NULL;
@@ -23,7 +23,7 @@ pthread_t *tid;
 pthread_mutex_t mtx , clock_mtx , stat_mtx;
 pthread_cond_t cond_nonempty;
 struct timeb start,end;
-struct sockaddr_in server;
+// struct sockaddr_in server;
 
 int main(int argc, char* argv[])
 {
@@ -88,12 +88,13 @@ int main(int argc, char* argv[])
 	printf("URL %s\n", starting_URL);
 	printf("Dir %s\n", save_dir);
 	
-	int i, sock;
+	int i, sock, c_sock, sockopt_val, command_sock;
+	socklen_t serverlen;
 	char buf[270];
-	// url_queue *queue = NULL;
+	//used to connect to command_port
 	struct sockaddr_in server;
 	struct sockaddr *serverptr = (struct sockaddr*)&server;
-	// struct hostent *rem;
+	
 	pthread_t *tid; 
 	DIR* dir = opendir(save_dir);
 	struct dirent *de;
@@ -110,6 +111,30 @@ int main(int argc, char* argv[])
 		// 	printf("ERROR\n");
 	}
 
+	//SETTING UP CONNECTION TO COMMAND PORT
+	
+	//create socket
+	if ((c_sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
+		perror("Failed to create socket :: client");	
+
+	//enable reuse option for socket
+	if (setsockopt(c_sock, SOL_SOCKET, SO_REUSEADDR, &sockopt_val, sizeof(int)) == -1)
+	{
+		perror("Failed: setsockopt");
+		exit(1);
+	}
+
+	server.sin_family = AF_INET;					//internet domain
+	server.sin_addr.s_addr = htonl(INADDR_ANY);		//any ip address
+	server.sin_port = htons(command_port);	
+
+	if (bind(c_sock,serverptr,sizeof(server)) == -1)
+		perror("Failed to bind socket to command port");
+
+	if (listen(c_sock,5) == -1)
+		perror("Failed: listen");
+
+	//END OF SETUP FOR CONNECTION
 
 	//initialize mutexes and cond_var
 	pthread_mutex_init(&mtx, 0);
@@ -136,23 +161,31 @@ int main(int argc, char* argv[])
 	//edw tha prepei na mpoun ta threads , connect/thread , 1 mono fdsock
 	for (i=0;i<nthr;i++)
 		pthread_create(tid+i, 0, worker_client, (void*)&arg);
-	//thread gia command line
-	while (working_threads == 0 && (urls_left(&queue)) == 0)
+	
+	while (!exit_flag)
 	{
-		// if (working_threads == 0 && (urls_left(&queue)) == 0)
-		// {
-			printf("EPITELOYS MPIKA EDW\n");
+		//put args
+		// commands_client();
+		serverlen = sizeof(server);
+		if ((command_sock = accept(c_sock, serverptr, &serverlen)) == -1)
+			perror("Failed: accept for command port");
+
+		commands_client(&command_sock);
+		if (shtdwn_flag)
+		{
+			printf("MPIKA AFTER CHLD2\n");
 			pthread_cond_broadcast(&cond_nonempty);
-			pthread_mutex_unlock(&mtx);
+			// shutdown(command_sock, SHUT_RDWR);
+			//wake up select
+			shutdown(sock, SHUT_RD);
 			break;
-		// }
+		}
 	}
 
 	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
 	printf("EFTASA EDW\n");
-	// close(sock); /* Close socket and exit */
-	/////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	//free memory
 	free(tid);
 	free(host_or_IP);
@@ -160,6 +193,8 @@ int main(int argc, char* argv[])
 	free(starting_URL);
 	freelist_c(&queue);
 	freelist_c(&checked_urls);
+	//na to tsekarw mipos to valw
+	// close(sock); /* Close socket and exit */
 }
 
 void perror_exit(char *message)

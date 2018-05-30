@@ -45,9 +45,16 @@ void* worker_client(void* args)
 				pthread_mutex_unlock(&mtx);
 				//mporei na mh xreiazetai
 				// shutdown(sockfd, SHUT_RDWR);
-				pthread_exit((void *)1);
+				// pthread_exit((void *)1);
+				exit_flag = 1;
+				break;
 			}
 			pthread_cond_wait(&cond_nonempty, &mtx);
+		}
+		if (exit_flag)
+		{
+			pthread_mutex_unlock(&mtx);
+			break;
 		}
 		
 		working_threads++;
