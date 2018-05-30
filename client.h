@@ -29,8 +29,6 @@ extern pthread_t *tid;
 extern pthread_mutex_t mtx , clock_mtx , stat_mtx;
 extern pthread_cond_t cond_nonempty;
 extern struct timeb start,end;
-// extern struct sockaddr_in server;
-// extern struct sockaddr *serverptr;
 
 #define REQUEST "GET %s HTTP/1.1\r\n"\
 				"Host: %s\r\n"\

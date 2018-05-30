@@ -18,12 +18,11 @@ char *save_dir;
 url_queue *queue = NULL;
 url_queue *checked_urls = NULL;
 int count, working_threads = 0;
-int served_pages, total_bytes;			//for stats 
+int served_pages = 0, total_bytes = 0;			//for stats 
 pthread_t *tid;
 pthread_mutex_t mtx , clock_mtx , stat_mtx;
 pthread_cond_t cond_nonempty;
 struct timeb start,end;
-// struct sockaddr_in server;
 
 int main(int argc, char* argv[])
 {
@@ -161,24 +160,28 @@ int main(int argc, char* argv[])
 	//edw tha prepei na mpoun ta threads , connect/thread , 1 mono fdsock
 	for (i=0;i<nthr;i++)
 		pthread_create(tid+i, 0, worker_client, (void*)&arg);
+	ftime(&start);			//start timer
 	
-	while (!exit_flag)
+	if (!exit_flag)
 	{
-		//put args
-		// commands_client();
-		serverlen = sizeof(server);
-		if ((command_sock = accept(c_sock, serverptr, &serverlen)) == -1)
-			perror("Failed: accept for command port");
-
-		commands_client(&command_sock);
-		if (shtdwn_flag)
+		while (1)
 		{
-			printf("MPIKA AFTER CHLD2\n");
-			pthread_cond_broadcast(&cond_nonempty);
-			// shutdown(command_sock, SHUT_RDWR);
-			//wake up select
-			shutdown(sock, SHUT_RD);
-			break;
+			//put args
+			// commands_client();
+			serverlen = sizeof(server);
+			if ((command_sock = accept(c_sock, serverptr, &serverlen)) == -1)
+				perror("Failed: accept for command port");
+
+			commands_client(&command_sock);
+			if (shtdwn_flag)
+			{
+				printf("MPIKA AFTER CHLD2\n");
+				pthread_cond_broadcast(&cond_nonempty);
+				// shutdown(command_sock, SHUT_RDWR);
+				//wake up select
+				shutdown(sock, SHUT_RD);
+				break;
+			}
 		}
 	}
 

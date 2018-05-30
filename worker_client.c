@@ -95,12 +95,7 @@ void* worker_client(void* args)
 		//kai ayto extra alla fainetai na esvise ta error
 		start_of_body[strlen(start_of_body)] = '\0';
 		printf("VGHKA\n");
-		// an einai null pame se epomeni epanalipsi logika
-		// if (start_of_body == NULL)
-		// 	printf("EINAI NULL\n");
-		// else
-		// 	printf("%s\n", start_of_body);
-		// printf("BUFLEN %ld , rrlen %ld\n", strlen(buf),strlen(start_of_body));
+		
 		//takes only header 
 		char *header = malloc(sizeof(char)*(strlen(buf)-strlen(start_of_body)+1));
 		memset(header, 0, strlen(buf)-strlen(start_of_body)+1);
@@ -133,10 +128,6 @@ void* worker_client(void* args)
 			total_data += data_read;
 		printf("TOTAL_DATA %d \n", total_data);
 		printf("-------------------------\n");
-		// body[strlen(body)] = '\0';
-		// printf("%s\n", body);
-		printf("-------------------------\n");
-
 		printf("Code %d , len %d\n", code,response_len);
 
 		//pairnw apo Newbuf ola ta links kai ta vazw sthn oura
@@ -147,19 +138,13 @@ void* worker_client(void* args)
 		int i = 0;
 		memset(link, 0, sizeof(link));
 		printf("***************************\n");
-		// printf("BODY:: %s\n", p);
-		// printf("***************************\n");
 		while ( (p=strstr(p,needle)) != NULL ) 
    		{
-			// printf("#.%s\n",p);
 	        p += strlen(needle);
-	        // printf("##.%s\n",p);
 	        tmpp = p;
-	        // printf("&&EINAI %c\n",*tmpp);
 	        while (*tmpp != '>')
 	        {	
 	        	link[i] = *tmpp;
-	        	// printf("###. %c\n",link[i]);
 	        	i++;
 	        	tmpp++;
 	        }
@@ -168,10 +153,8 @@ void* worker_client(void* args)
 	    	printf("TELEIOSA TO LINK\n%s\n",link);
 	        pthread_mutex_lock(&mtx);
 	       	push_c(&queue, &checked_urls, link, cur_url);
-	        // push_c(&checked_urls, link,cur_url);
-	        // print_c(&queue);
+	        //axristo to count nomizw
 	        count++;
-	        // if (count)
 	        if (urls_left(&queue)==0)
 	        	pthread_cond_broadcast(&cond_nonempty);
 	        pthread_mutex_unlock(&mtx);
@@ -228,6 +211,10 @@ void* worker_client(void* args)
 		pthread_mutex_lock(&mtx);
 		working_threads--;
 		pthread_mutex_unlock(&mtx);
+		pthread_mutex_lock(&stat_mtx);
+		served_pages++;
+		total_bytes += response_len;
+		pthread_mutex_unlock(&stat_mtx);
 		printf("PAME GIA NEXT LOOP\n");
 		
 	}

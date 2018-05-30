@@ -53,36 +53,19 @@ struct arg_struct
 
 void sigchld_handler(int sig);
 
-// fd_set set, readfds;
-// short int shtdwn_flag = 0;
-// // must be set to NULL  
-// buflist *buffer = NULL;
-// int count;//=0;
-// int served_pages = 0 , total_bytes = 0;			//for stats 
-// pthread_t *tid;
-// pthread_t prod;
-// pthread_mutex_t mtx , clock_mtx , stat_mtx;
-// pthread_cond_t cond_nonempty;
-// struct timeb start,end;
-
 extern fd_set set, readfds;
-extern short int shtdwn_flag; //= 0;
+extern short int shtdwn_flag; 
 // must be set to NULL  
-extern buflist *buffer;// = NULL;
-extern int count;//=0;
+extern buflist *buffer;
+extern int count;
 extern int served_pages , total_bytes;			//for stats 
 extern pthread_t *tid;
 extern pthread_t prod;
 extern pthread_mutex_t mtx , clock_mtx , stat_mtx, shtdw_mtx;
 extern pthread_cond_t cond_nonempty;
-// extern pthread_cond_t cond_nonfull;
-// time_t start = -1 , end = -1;
-// time_t start,end;
 extern struct timeb start,end;
-// struct timeval t1,t2;
 
 void* child2(void*);
-
 void* worker(void*);
 void* producer(void*);
 
