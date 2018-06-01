@@ -75,7 +75,7 @@ void* worker_client(void* args)
 		//send GET request
 		if (write(sockfd,buf,strlen(buf))<0)
 			printf("Fail req\n");
-		//close write for socket
+		//close write end for socket
 		shutdown(sockfd, SHUT_WR);
 			
 		int data_read=0;
@@ -115,6 +115,11 @@ void* worker_client(void* args)
 			token = strtok(NULL, delim);
 		}
 		free(header);
+		//check for code returned (200, 403,404)
+		//if code != 200 then go to next html file
+		if (code != 200)
+			continue;
+
 		//apo header thelw na dw code kai length , code gia na dw an tha to dextw kai length gia malloc
 		//Newbuf-> pairnei ta extra poy phre o buf prin kai ta upoloipa apo th selida
 		//kai ta apothikeyei sto arxeio poy prepei na ftiaxtei
@@ -218,5 +223,6 @@ void* worker_client(void* args)
 		printf("PAME GIA NEXT LOOP\n");
 		
 	}
+	printf("VGAINW APO THREADS %ld\n", pthread_self());
 	return (void*)1;
 }
