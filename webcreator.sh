@@ -4,7 +4,7 @@
 make_set()
 {
 	cur_site=$1
-	echo Received $cur_site
+	# echo Received $cur_site
 	#finds first number of string , site id
 	sid=`echo "$cur_site" | grep -oP '^[^0-9]*\K[0-9]+'`
 	setF=()
@@ -28,10 +28,6 @@ make_set()
 	let "f=($p/2)+1"
 	#echo Q is $q F is $f
 	y=0
-	#let "rr=${#setQ[@]}-1"
-	#echo RR $rr
-	#echo SETQ is
-	#echo ${setQ[@]}
 	if [ "$q" -ne 1 ]; then
 		for ((i=0;i<$q;i++))
 		do
@@ -45,8 +41,6 @@ make_set()
 			tmpid=`echo "${setQ[$rand]}" | grep -oP '^[^0-9]*\K[0-9]+'`
 			combined[$y]=../site${tmpid}/${setQ[$rand]}
 			unset 'setQ[$rand]'
-			#cho RANDQ IS $rand
-			#echo ${combined[$y]} or ${setQ[$rand]}
 			((++y))
 		done
 	fi
@@ -66,14 +60,14 @@ make_set()
 			done
 			#combined[$y]=site${sid}/${setF[$rand]}
 			combined[$y]=${setF[$rand]}
-			echo "COMBINED1 ${combined[$y]}"
+			#echo "COMBINED1 ${combined[$y]}"
 			unset 'setF[$rand]'
 		else									#if setF has only one element then
 			combined[$y]=${setF[0]}				#take the element
 			((++y))								#and 
 			#combined[$y]=site${sid}/${cur_site}			#take page that we work on
 			combined[$y]=${cur_site}
-			echo "COMBINED2 ${combined[$y]}"
+			# echo "COMBINED2 ${combined[$y]}"
 			break
 		fi
 		#echo RANDF IS $rand
@@ -91,6 +85,7 @@ make_set()
 #check number of arguments
 if [ "$#" -ne "4" ]; then
 	echo Not enough args
+	exit 1
 fi
 #path of directory
 root_dir="$1"
