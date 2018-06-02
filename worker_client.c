@@ -92,6 +92,13 @@ void* worker_client(void* args)
 		} 
 		//brisko pou xekina to body tou minimatos
 		char *start_of_body = strstr(buf,"<!DOCTYPE html>");
+		if (start_of_body == NULL)
+		{
+			pthread_mutex_lock(&mtx);
+			working_threads--;
+			pthread_mutex_unlock(&mtx);
+			continue;
+		}
 		//kai ayto extra alla fainetai na esvise ta error
 		start_of_body[strlen(start_of_body)] = '\0';
 		printf("VGHKA\n");

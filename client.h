@@ -6,6 +6,7 @@
 #include <sys/socket.h> 	/* sockets */
 #include <sys/stat.h>		/* mkdir */
 #include <sys/select.h>		/* select() */
+#include <sys/wait.h>		/* waitpid */
 #include <netinet/in.h> 	/* internet sockets */
 #include <unistd.h> 		/* read, write, close */
 #include <netdb.h> 			/* gethostbyaddr */

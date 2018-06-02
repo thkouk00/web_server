@@ -36,10 +36,43 @@ void* commands_client(void* nsock)
 		}
 		else if (!strcmp(buf, "SEARCH"))
 		{
+			char *search_buffer;
 			printf("SEARCH asked\n");
+			if (working_threads > 0)
+			{
+				write(*command_sock, "Crawling in progress, please try again later.", strlen("Crawling in progress, please try again later."));
+				continue;
+			}
 			int pid = fork();
 			if (pid == 0)
 			{
+				FILE *fp = fopen("/home/thanos/Desktop/input_dirs", "w");
+				DIR *dir;
+				struct dirent *entr;
+				// printf("SACEDIR->%s.\n", save_dir);
+				dir = opendir(save_dir);
+				if (dir == NULL)
+				{
+					printf("error opendir\n");
+					exit(1);
+				}
+				while ((entr = readdir(dir)) != NULL)
+				{
+					if (!strcmp(entr->d_name, "..") || !strcmp(entr->d_name, "."))
+						continue;
+					search_buffer = malloc(sizeof(char)*(strlen(save_dir)+strlen(entr->d_name)+2));
+					memset(search_buffer, 0, strlen(save_dir)+strlen(entr->d_name)+1);
+					memcpy(search_buffer, save_dir, strlen(save_dir));
+					strcat(search_buffer, "/");
+					strcat(search_buffer, entr->d_name);
+					search_buffer[strlen(search_buffer)] = '\0';
+					fwrite(search_buffer, 1, strlen(search_buffer), fp);
+					fwrite("\n", 1, strlen("\n"), fp);
+					printf("%s\n", entr->d_name);
+					free(search_buffer);
+				}
+				fclose(fp);
+				closedir(dir);
 				dup2(*command_sock, 0);
 				dup2(*command_sock, 1);
 				execl("/home/thanos/di/syspro/jobExecutor/jobExecutor","jobExecutor" ,"-d","/home/thanos/Desktop/input_dirs","-w","2",NULL);
