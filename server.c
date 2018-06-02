@@ -64,9 +64,7 @@ int main(int argc , char* argv[])
 	pthread_mutex_init(&stat_mtx, 0);
 	pthread_mutex_init(&shtdw_mtx, 0);
 	pthread_cond_init(&cond_nonempty, 0);
-	// pthread_cond_init(&cond_nonfull, 0);
 	
-
 	//create socket for clients
 	if ((sock=socket(AF_INET,SOCK_STREAM,0)) == -1)
 		perror("Failed to create socket");
@@ -103,10 +101,9 @@ int main(int argc , char* argv[])
 	if (listen(sock,128) == -1)
 		perror("Failed: listen");
 
-	//htan 1
 	if (listen(c_sock,5) == -1)
 		perror("Failed: listen");
-	printf("Listening for connections to port %d and commands from port %d\n", port,command_port);
+	// printf("Listening for connections to port %d and commands from port %d\n", port,command_port);
 	
 	// struct for passing arguments
 	//useless i think , check it later
@@ -123,7 +120,7 @@ int main(int argc , char* argv[])
 	//create one thread in order to insert fd to buff
 	pthread_create(&prod, 0, producer, (void*)&arg_strct);
 	ftime(&start);			//start timer
-	printf("GIRISA %ld\n", pthread_self());
+	
 	// wait for connection via netcat
 	// to take commands
 	// close server when "SHUTDOWN" arrive from cmd
@@ -138,7 +135,6 @@ int main(int argc , char* argv[])
 			child2(&command_sock);
 			if (shtdwn_flag)
 			{
-				printf("MPIKA AFTER CHLD2\n");
 				pthread_cond_broadcast(&cond_nonempty);
 				// shutdown(command_sock, SHUT_RDWR);
 				//wake up select
@@ -147,15 +143,13 @@ int main(int argc , char* argv[])
 			}
 		}
 	}	
-	printf("JERE %ld\n",pthread_self());
 
 	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
-	printf("EDW\n");
 	pthread_join(prod, NULL);
-	printf("EDW2\n");
-	if (pthread_mutex_destroy(&mtx)<0)
-		printf("MUTEX < 0\n");;
+
+	// if (pthread_mutex_destroy(&mtx)<0)
+	// 	printf("MUTEX < 0\n");;
 	pthread_mutex_destroy(&clock_mtx);
 	pthread_mutex_destroy(&stat_mtx);
 	pthread_mutex_destroy(&shtdw_mtx);

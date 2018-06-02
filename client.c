@@ -83,9 +83,9 @@ int main(int argc, char* argv[])
 		}
 
 	}
-	printf("Host:%s\n", host_or_IP);
-	printf("URL %s\n", starting_URL);
-	printf("Dir %s\n", save_dir);
+	// printf("Host:%s\n", host_or_IP);
+	// printf("URL %s\n", starting_URL);
+	// printf("Dir %s\n", save_dir);
 	
 	int i, sock, c_sock, sockopt_val, command_sock;
 	socklen_t serverlen;
@@ -98,17 +98,20 @@ int main(int argc, char* argv[])
 	DIR* dir = opendir(save_dir);
 	struct dirent *de;
 	//check if dir exists , if not create directory
-	if (!dir)
-		mkdir(save_dir,0760);
 	//ftiaxnw meta na kanei purge
-	while ((de = readdir(dir)) != NULL)
+	if (dir)
 	{
-		if (!strcmp(de->d_name,".") || !strcmp(de->d_name,".."))
-			continue;	
-		printf("%s\n", de->d_name);
-		// if (rmdir(de->d_name)<0)
-		// 	printf("ERROR\n");
+		//check code
+		while ((de = readdir(dir)) != NULL)
+		{
+			if (!strcmp(de->d_name,".") || !strcmp(de->d_name,".."))
+				continue;	
+			// printf("%s\n", de->d_name);
+			
+		}
 	}
+	else	// rwx for user and group , rx for others
+		mkdir(save_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 	//SETTING UP CONNECTION TO COMMAND PORT
 	
@@ -140,14 +143,13 @@ int main(int argc, char* argv[])
 	pthread_mutex_init(&clock_mtx, 0);
 	pthread_mutex_init(&stat_mtx, 0);
 	pthread_cond_init(&cond_nonempty, 0);
-	// pthread_mutex_init(&shtdw_mtx, 0);
 	
 	//insert url in queue
 	push_c(&queue, &checked_urls, starting_URL, NULL);
 	// push_c(&checked_urls, starting_URL,NULL);
 	count = 1;
-	print_c(&queue);
-	printf("PERSASASAS\n");
+	// print_c(&queue);
+	// printf("PERSASASAS\n");
 	if (nthr == 0)
 		nthr = 2;
 	tid = malloc(sizeof(pthread_t)*nthr);
@@ -157,7 +159,7 @@ int main(int argc, char* argv[])
 	arg.port = port;
 	arg.host = host_or_IP;
 	// arg.serverptr = serverptr;
-	//edw tha prepei na mpoun ta threads , connect/thread , 1 mono fdsock
+	//thread_pool
 	for (i=0;i<nthr;i++)
 		pthread_create(tid+i, 0, worker_client, (void*)&arg);
 	ftime(&start);			//start timer
@@ -166,8 +168,6 @@ int main(int argc, char* argv[])
 	{
 		while (1)
 		{
-			//put args
-			// commands_client();
 			serverlen = sizeof(server);
 			if ((command_sock = accept(c_sock, serverptr, &serverlen)) == -1)
 				perror("Failed: accept for command port");
@@ -175,7 +175,6 @@ int main(int argc, char* argv[])
 			commands_client(&command_sock);
 			if (shtdwn_flag)
 			{
-				printf("MPIKA AFTER CHLD2\n");
 				pthread_cond_broadcast(&cond_nonempty);
 				// shutdown(command_sock, SHUT_RDWR);
 				//wake up select
@@ -187,7 +186,6 @@ int main(int argc, char* argv[])
 
 	for (int i=0;i<nthr;i++)
 		pthread_join(tid[i], NULL);
-	printf("EFTASA EDW\n");
 	
 	//free memory
 	free(tid);

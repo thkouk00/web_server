@@ -5,11 +5,10 @@ void* commands_client(void* nsock)
 	int *command_sock = nsock;
 	char buf[256];
 	memset(buf, 0, sizeof(buf));
-	printf("Command port printing\n");
+	printf("Command port receiving...\n");
 	//response through socket not stdout
 	while (read(*command_sock, buf, 256)>0)
 	{	
-		printf("COMMAND\n");
 		buf[strlen(buf)-1] = '\0';
 		if(strlen(buf)==0)
 			break;
@@ -17,7 +16,7 @@ void* commands_client(void* nsock)
 		{
 			pthread_mutex_lock(&clock_mtx);
 			pthread_mutex_lock(&stat_mtx);
-			//mporei na xreiazetai lock kai to stat_mtx , check it
+			
 			ftime(&end);				//stop timer
 			int hours;
 			memset(buf, 0, sizeof(buf));
@@ -37,7 +36,6 @@ void* commands_client(void* nsock)
 		else if (!strcmp(buf, "SEARCH"))
 		{
 			char *search_buffer;
-			printf("SEARCH asked\n");
 			if (working_threads > 0)
 			{
 				write(*command_sock, "Crawling in progress, please try again later.", strlen("Crawling in progress, please try again later."));
@@ -46,14 +44,13 @@ void* commands_client(void* nsock)
 			int pid = fork();
 			if (pid == 0)
 			{
-				FILE *fp = fopen("/home/thanos/Desktop/input_dirs", "w");
+				FILE *fp = fopen("input_dirs", "w");
 				DIR *dir;
 				struct dirent *entr;
-				// printf("SACEDIR->%s.\n", save_dir);
 				dir = opendir(save_dir);
 				if (dir == NULL)
 				{
-					printf("error opendir\n");
+					printf("Error opendir :: commands_client.c\n");
 					exit(1);
 				}
 				while ((entr = readdir(dir)) != NULL)
@@ -68,15 +65,16 @@ void* commands_client(void* nsock)
 					search_buffer[strlen(search_buffer)] = '\0';
 					fwrite(search_buffer, 1, strlen(search_buffer), fp);
 					fwrite("\n", 1, strlen("\n"), fp);
-					printf("%s\n", entr->d_name);
 					free(search_buffer);
 				}
 				fclose(fp);
 				closedir(dir);
 				dup2(*command_sock, 0);
 				dup2(*command_sock, 1);
-				execl("/home/thanos/di/syspro/jobExecutor/jobExecutor","jobExecutor" ,"-d","/home/thanos/Desktop/input_dirs","-w","2",NULL);
+				//ftiaxto katallila gia teliki paradosi
+				execl("/home/thanos/di/syspro/jobExecutor/jobExecutor","jobExecutor" ,"-d","/home/thanos/di/syspro/web_server/input_dirs","-w","2",NULL);
 				printf("ERROR exec\n");
+				exit(1);
 			}
 			else
 			{
@@ -90,11 +88,8 @@ void* commands_client(void* nsock)
 			close(*command_sock);
 			break;
 		}
-
-		printf("Commandport received : %s\n", buf);
 		memset(buf, 0, 256);
 	}
-	printf("Epistrefw main\n");
-	// write(*command_sock,"Response from server",strlen("Response from server"));
+	
 	return (void*)1;
 }

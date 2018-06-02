@@ -10,7 +10,7 @@ void* producer(void* args)
 	struct sockaddr_in client = {0}, cmd;
 	struct sockaddr *clientptr= (struct sockaddr*)&client ;
 	struct sockaddr *cmdptr= (struct sockaddr*)&cmd;
-	//initialize value , valgrind error
+	//initialize value 
 	socklen_t clientlen = sizeof(struct sockaddr_in), cmdlen;
 
 	FD_ZERO(&set);
@@ -18,35 +18,28 @@ void* producer(void* args)
 	highfd = sock;
 	while(1)
 	{
-		// readfds = set;
-		// res = select(highfd+1, &readfds, NULL, NULL, NULL);
-		// if (res < 0)
-		// 	printf("ERROR SELECT\n");
-		// else if (res > 0)
-		// {
-			if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
-			{	
-				if (shtdwn_flag)
-				{
-					printf("PROD in \n");
-					pthread_mutex_unlock(&mtx);
-					pthread_exit((void*)1);
-					// return (void*)1;
-				}
-				else
-					perror("Failed: accept");
+		
+		if ((newsock = accept(sock, clientptr, &clientlen)) == -1)
+		{	
+			if (shtdwn_flag)
+			{
+				pthread_mutex_unlock(&mtx);
+				pthread_exit((void*)1);
+				// return (void*)1;
 			}
-			pthread_mutex_lock(&mtx);
+			else
+				perror("Failed: accept");
+		}
+		pthread_mutex_lock(&mtx);
 
-			// insert fd to buffer
-			push(&buffer,newsock);
-			count++;
-			printf("New insertion %d , count %d\n", newsock,count);
-			printf("Eimai %ld\n", pthread_self());
-			pthread_cond_broadcast(&cond_nonempty);
-			pthread_mutex_unlock(&mtx);
-		// }
-		printf("FLAG %d\n", shtdwn_flag);
+		// insert fd to buffer
+		push(&buffer,newsock);
+		count++;
+		// printf("New insertion %d , count %d\n", newsock,count);
+		// printf("From thread %ld\n", pthread_self());
+		pthread_cond_broadcast(&cond_nonempty);
+		pthread_mutex_unlock(&mtx);
+		
 		// if (shtdwn_flag)
 		// {
 		// 	pthread_exit((void*)1);

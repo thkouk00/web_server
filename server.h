@@ -51,7 +51,7 @@ struct arg_struct
 	char *root_dir;
 };
 
-void sigchld_handler(int sig);
+// void sigchld_handler(int sig);
 
 extern fd_set set, readfds;
 extern short int shtdwn_flag; 

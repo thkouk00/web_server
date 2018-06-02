@@ -68,7 +68,6 @@ void print(buflist** head)
 void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 {
 	int first_push = 0;
-	printf("Phra %s\n", url);
 	// create head if doesn't exist
 	// then insert node at end of list (queue implementation)
 	if (*head == NULL)
@@ -111,7 +110,6 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 				cur_url++;
 			}
 			buf[strlen(buf)] = '\0';
-			printf("BUF %s\n", buf);
 			cur->url = malloc(sizeof(char)*(strlen(buf)+strlen(url)+1));
 			memset(cur->url, 0, strlen(buf)+strlen(url)+1);
 			memcpy(cur->url,buf,strlen(buf));
@@ -129,7 +127,6 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 	cur->next = NULL;
 	if (search_c(queue2, cur->url) == 1)
 	{
-		printf("EINAI HDH MESA TO %s.\n", cur->url);
 		free(cur->url);
 		cur->url = NULL;
 		free(cur);
@@ -137,7 +134,6 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 	}
 	else
 	{
-		printf("**MPAINEI** %s.\n", cur->url);
 		push_c2(queue2,cur->url);
 	}
 }
@@ -161,7 +157,6 @@ void push_c2(url_queue** head,char* url)
 	memcpy(cur->url, url, strlen(url));
 	cur->url[strlen(cur->url)] = '\0';
 	cur->next = NULL;
-	printf("CHECKED %s.\n", cur->url);
 }
 
 // pop first node of queue
@@ -179,12 +174,10 @@ void pop_head_c(url_queue** head,char** url)
 		free(tmp);
 		//free url -> client
 	}
-	printf("EIMAI POP-> %s\n", *url);
-	if (*url == NULL)
-	{
-		printf("PRINTING\n");
-		print_c(head);
-	}
+	// if (*url == NULL)
+	// {
+	// 	print_c(head);
+	// }
 }
 
 // free queue by deleting all nodes

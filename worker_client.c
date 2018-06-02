@@ -14,7 +14,6 @@ void* worker_client(void* args)
 	char *cur_url;
 	struct hostent *rem;
 	
-	// bzero((char*)&server,sizeof(server));
 	while(1)
 	{
 		memset(buf, 0, sizeof(buf));
@@ -34,16 +33,15 @@ void* worker_client(void* args)
 
 		pthread_mutex_lock(&mtx);
 		
-		printf("Thread %ld\n", pthread_self());
+		// printf("Thread %ld\n", pthread_self());
 		//wait until queue has link to extract
-		// while (count == 0)
 		while (urls_left(&queue) == 0)
 		{
+			//if queue is empty and all workers are waiting exit
 			if (working_threads == 0)
 			{
 				pthread_cond_broadcast(&cond_nonempty);
 				pthread_mutex_unlock(&mtx);
-				//mporei na mh xreiazetai
 				// shutdown(sockfd, SHUT_RDWR);
 				// pthread_exit((void *)1);
 				exit_flag = 1;
@@ -58,19 +56,15 @@ void* worker_client(void* args)
 		}
 		
 		working_threads++;
-		printf("COUNT IS %d\n", count);
 		//pop head from queue 
 		pop_head_c(&queue, &cur_url);
-		printf("HRERE %s\n",cur_url);
-		//edw pairnei null kapoia stigmi kai xtipaei error
-		print_c(&queue);
+		
+		// print_c(&queue);
 		count--;
 		//must free cur_url after i am done
 		pthread_mutex_unlock(&mtx);
 		//construct GET request
 		snprintf(buf, sizeof(buf), REQUEST,cur_url,host);
-
-		printf("BUF: %s\n", buf);
 		buf[strlen(buf)] = '\0';
 		//send GET request
 		if (write(sockfd,buf,strlen(buf))<0)
@@ -86,9 +80,6 @@ void* worker_client(void* args)
 		while ((data_read = read(sockfd,&buf[total_data],sizeof(buf)-total_data)) > 0)
 		{
 			total_data += data_read;
-			printf("MPIKA %d\n", total_data);
-			// if ((rr = strstr(buf, "\r\n\r\n"))!=NULL)
-			// 	break; 
 		} 
 		//brisko pou xekina to body tou minimatos
 		char *start_of_body = strstr(buf,"<!DOCTYPE html>");
@@ -99,15 +90,13 @@ void* worker_client(void* args)
 			pthread_mutex_unlock(&mtx);
 			continue;
 		}
-		//kai ayto extra alla fainetai na esvise ta error
+		//for valgrind error
 		start_of_body[strlen(start_of_body)] = '\0';
-		printf("VGHKA\n");
 		
 		//takes only header 
 		char *header = malloc(sizeof(char)*(strlen(buf)-strlen(start_of_body)+1));
 		memset(header, 0, strlen(buf)-strlen(start_of_body)+1);
 		memcpy(header, buf, strlen(buf)-strlen(start_of_body));
-		printf("HEADER\n%s--",header);
 		//copy of buf , in order not to lose data from strtok
 		//use it to take code and length of response from HTTP header
 		char *token, delim[] = "\r\n";
@@ -115,7 +104,6 @@ void* worker_client(void* args)
 		token = strtok(header, delim);
 		while (token != NULL)
 		{
-			printf("TOKEN. %s\n",token);
 			check_response(token,&code,&response_len);
 			if (code != -1 && response_len != -1)
 				break;
@@ -138,18 +126,16 @@ void* worker_client(void* args)
 		total_data = strlen(start_of_body);
 		while ((data_read = read(sockfd,&body[total_data],(response_len+1)-total_data)) > 0)
 			total_data += data_read;
-		printf("TOTAL_DATA %d \n", total_data);
-		printf("-------------------------\n");
-		printf("Code %d , len %d\n", code,response_len);
+		// printf("TOTAL_DATA %d \n", total_data);
+		// printf("-------------------------\n");
+		// printf("Code %d , len %d\n", code,response_len);
 
-		//pairnw apo Newbuf ola ta links kai ta vazw sthn oura
-		//htan const kai *
+		//extract links and puth them to queue
 		const char needle[] = "<a href=";
 		char *p = body, *tmpp=NULL;
 		char link[150];
 		int i = 0;
 		memset(link, 0, sizeof(link));
-		printf("***************************\n");
 		while ( (p=strstr(p,needle)) != NULL ) 
    		{
 	        p += strlen(needle);
@@ -162,10 +148,9 @@ void* worker_client(void* args)
 	        }
 	        link[strlen(link)] = '\0';
 	        //edw to link einai etoimo , push it in queue
-	    	printf("TELEIOSA TO LINK\n%s\n",link);
 	        pthread_mutex_lock(&mtx);
 	       	push_c(&queue, &checked_urls, link, cur_url);
-	        //axristo to count nomizw
+	        //**no need for this i think , check it later**
 	        count++;
 	        if (urls_left(&queue)==0)
 	        	pthread_cond_broadcast(&cond_nonempty);
@@ -173,17 +158,12 @@ void* worker_client(void* args)
 	    	//reset buffer, ready for next link
 	    	memset(link, 0, sizeof(link));
 	    	i=0;
-	        // total++; //total occurences of string searched
     	}
-    	printf("BGHJA APO WHILE\n");
  		char *path_to_file = malloc(sizeof(char)*(strlen(save_dir)+strlen(cur_url)+1));
  		memset(path_to_file, 0, strlen(save_dir)+strlen(cur_url)+1);
  		memcpy(path_to_file, save_dir, strlen(save_dir));
  		strcat(path_to_file, cur_url);
- 		// path_to_file[strlen(path_to_file)] = '\0';
-		// FILE *fp = fopen(path_to_file, "w");
-		// if (fp == NULL)
-		// 	perror("fopen Error\n");
+ 		
 		char dir[50];
 		memset(dir, 0, sizeof(dir));
 		char *temp = cur_url;
@@ -208,9 +188,8 @@ void* worker_client(void* args)
 		FILE *fp = fopen(path_to_file, "w");
 		if (fp == NULL)
 			perror("fopen Error\n");
-		//grapse sto arxeio eite th vrhke th selida eite oxi
-		printf("Path %s.\n", path_to_file);
-		// printf("%s\n^BODY\n", body);
+		// //grapse sto arxeio eite th vrhke th selida eite oxi
+		// printf("Path %s.\n", path_to_file);
 		if (code > 0)
 			fwrite(body, 1, strlen(body), fp);
 		// close file
@@ -227,9 +206,7 @@ void* worker_client(void* args)
 		served_pages++;
 		total_bytes += response_len;
 		pthread_mutex_unlock(&stat_mtx);
-		printf("PAME GIA NEXT LOOP\n");
 		
 	}
-	printf("VGAINW APO THREADS %ld\n", pthread_self());
 	return (void*)1;
 }

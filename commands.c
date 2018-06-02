@@ -9,7 +9,6 @@ void* child2(void* nsock)
 	//response through socket not stdout
 	while (read(*command_sock, buf, 256)>0)
 	{	
-		printf("COMMAND\n");
 		buf[strlen(buf)-1] = '\0';
 		if(strlen(buf)==0)
 			break;
@@ -17,7 +16,7 @@ void* child2(void* nsock)
 		{
 			pthread_mutex_lock(&clock_mtx);
 			pthread_mutex_lock(&stat_mtx);
-			//mporei na xreiazetai lock kai to stat_mtx , check it
+			//need lock stat_mtx? , check it
 			ftime(&end);				//stop timer
 			int hours;
 			memset(buf, 0, sizeof(buf));
@@ -42,10 +41,10 @@ void* child2(void* nsock)
 			break;
 		}
 
-		printf("Commandport received : %s\n", buf);
+		// printf("Commandport received : %s\n", buf);
 		memset(buf, 0, 256);
 	}
-	printf("Epistrefw main\n");
+	// printf("Epistrefw main\n");
 	// write(*command_sock,"Response from server",strlen("Response from server"));
 	return (void*)1;
 }
