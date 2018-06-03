@@ -83,11 +83,11 @@ int main(int argc, char* argv[])
 		}
 
 	}
-	// printf("Host:%s\n", host_or_IP);
-	// printf("URL %s\n", starting_URL);
-	// printf("Dir %s\n", save_dir);
+	printf("Host:%s\n", host_or_IP);
+	printf("URL %s\n", starting_URL);
+	printf("Dir %s\n", save_dir);
 	
-	int i, sock, c_sock, sockopt_val, command_sock;
+	int i, sock, c_sock, sockopt_val = 1, command_sock;
 	socklen_t serverlen;
 	char buf[270];
 	//used to connect to command_port

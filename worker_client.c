@@ -29,7 +29,7 @@ void* worker_client(void* args)
 		server.sin_port = htons(port);
 
 		if (connect(sockfd, serverptr, sizeof(server)) == -1)
-			perror("Failed to connect");
+			perror("Failed to connect :: worker_client");
 
 		pthread_mutex_lock(&mtx);
 		
@@ -51,14 +51,15 @@ void* worker_client(void* args)
 		}
 		if (exit_flag)
 		{
-			pthread_mutex_unlock(&mtx);
+			close(sockfd);
+			// pthread_mutex_unlock(&mtx);
 			break;
 		}
 		
 		working_threads++;
 		//pop head from queue 
 		pop_head_c(&queue, &cur_url);
-		
+		printf("POP %s\n", cur_url);
 		// print_c(&queue);
 		count--;
 		//must free cur_url after i am done
@@ -129,7 +130,7 @@ void* worker_client(void* args)
 		// printf("TOTAL_DATA %d \n", total_data);
 		// printf("-------------------------\n");
 		// printf("Code %d , len %d\n", code,response_len);
-
+		shutdown(sockfd, SHUT_RD);
 		//extract links and puth them to queue
 		const char needle[] = "<a href=";
 		char *p = body, *tmpp=NULL;
@@ -150,9 +151,11 @@ void* worker_client(void* args)
 	        //edw to link einai etoimo , push it in queue
 	        pthread_mutex_lock(&mtx);
 	       	push_c(&queue, &checked_urls, link, cur_url);
+	       	printf("PUSH %s\n", link);
+	       	printf("Left %d\n", urls_left(&queue));
 	        //**no need for this i think , check it later**
-	        count++;
-	        if (urls_left(&queue)==0)
+	        // count++;
+	        // if (urls_left(&queue)==0)
 	        	pthread_cond_broadcast(&cond_nonempty);
 	        pthread_mutex_unlock(&mtx);
 	    	//reset buffer, ready for next link
@@ -195,7 +198,8 @@ void* worker_client(void* args)
 		// close file
 		fclose(fp);
 		//server closes sockfd
-		// close(sockfd); /* Close socket and exit */
+		//extra 3/6
+		close(sockfd); /* Close socket and exit */
 		free(body);
 		free(dir_path);
 		free(path_to_file);

@@ -1,6 +1,6 @@
 #include "server.h"
 
-void* child2(void* nsock) 
+void* commands(void* nsock) 
 {
 	int *command_sock = nsock;
 	char buf[256];

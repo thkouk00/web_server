@@ -65,7 +65,7 @@ extern pthread_mutex_t mtx , clock_mtx , stat_mtx, shtdw_mtx;
 extern pthread_cond_t cond_nonempty;
 extern struct timeb start,end;
 
-void* child2(void*);
+void* commands(void*);
 void* worker(void*);
 void* producer(void*);
 

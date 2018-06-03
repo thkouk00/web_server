@@ -132,7 +132,7 @@ int main(int argc , char* argv[])
 			if ((command_sock = accept(c_sock, cmdptr, &cmdlen)) == -1)
 				perror("Failed: accept for command port");
 
-			child2(&command_sock);
+			commands(&command_sock);
 			if (shtdwn_flag)
 			{
 				pthread_cond_broadcast(&cond_nonempty);

@@ -12,6 +12,7 @@ typedef struct buf_struct{
 
 void push(buflist** , int);
 void pop_head(buflist**,int*);
+int nodes_left(buflist** );
 void print(buflist**);
 void freelist(buflist**);
 

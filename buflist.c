@@ -34,6 +34,21 @@ void pop_head(buflist** head,int *fd)
 	}
 }
 
+//count remaining fds
+int nodes_left(buflist** head)
+{
+	if (*head == NULL)
+		return -1;
+	buflist *cur = *head;
+	int count = 0;
+	while (cur->next)
+	{
+		cur = cur->next;
+		count++;
+	}
+	return count;
+}
+
 // free queue by deleting all nodes
 void freelist(buflist** head)
 {

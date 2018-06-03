@@ -17,9 +17,14 @@ void* worker(void* arg)
 	while(1)
 	{
 		pthread_mutex_lock(&mtx);
-		while (count == 0 && !shtdwn_flag)
+		// while (count == 0 && !shtdwn_flag)
+		while(nodes_left(&buffer) <= 0 && !shtdwn_flag)
+		{
+			printf("Ready to wait %ld\n",pthread_self());
 			pthread_cond_wait(&cond_nonempty, &mtx);
-		
+			printf("XIPNISA %d apo %ld\n", count,pthread_self());
+		}
+		printf("BGHKA APO WAIT me stoixeia %d and %ld\n", nodes_left(&buffer),pthread_self());
 		if (shtdwn_flag)
 		{
 			pthread_mutex_unlock(&mtx);
@@ -28,8 +33,8 @@ void* worker(void* arg)
 		// take first fd from queue
 		pop_head(&buffer, &fd);
 		count--;
-		// printf("Evgala fd %d , count %d\n", fd,count);
-		// printf("Worker %ld\n", pthread_self());
+		printf("Evgala fd %d , count %d\n", fd,count);
+		printf("Worker %ld\n", pthread_self());
 		pthread_mutex_unlock(&mtx);
 		valid = invalid = 0;
 		loop = 1;
@@ -37,10 +42,16 @@ void* worker(void* arg)
 		memset(requestbuff, 0, sizeof(requestbuff));
 		int data_read=0;
 		int total_data=0;
+		printf("PRIN MPO READ %ld\n",pthread_self());
 		while ((data_read = read(fd, &requestbuff[total_data], (sizeof(requestbuff)-total_data)))>0)
 		{	
 			total_data += data_read;
+			if (!strncmp(&requestbuff[strlen(requestbuff)-4],"\r\n\r\n", 4))
+				break;
+			printf("phra %s\n", requestbuff);
+			printf("HERE %d\n", total_data);
 		}
+		shutdown(fd, SHUT_RD);
 		printf("%s", requestbuff);
 		//must end with blank line
 		if (strncmp(&requestbuff[strlen(requestbuff)-4],"\r\n\r\n", 4))
@@ -74,6 +85,7 @@ void* worker(void* arg)
 				free(tmp);
 				loop++;
 				token = strtok(NULL, delim);
+				printf("TOKEN LOOP\n");
 			}
 		}
 
@@ -156,7 +168,8 @@ void* worker(void* arg)
 			free(host);
 			host = NULL;
 		}
-		
+		//to vala extra
+		// shutdown(fd, SHUT_WR);
 		close(fd);
 	}
 	//na dw an apla kanw return kai oxi pthread_exit
