@@ -173,6 +173,6 @@ void* worker(void* arg)
 		close(fd);
 	}
 	//na dw an apla kanw return kai oxi pthread_exit
-	pthread_exit((void*)1);
-	// return (void*)1;
+	// pthread_exit((void*)1);
+	return (void*)1;
 }

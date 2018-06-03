@@ -9,8 +9,8 @@ FLAGS	= -c
 
 all:	$(OBJS1) $(OBJS2)
 	@cd ../jobExecutor && make
-	$(CC) -g3 -o httpd $(OBJS1)	-pthread
-	$(CC) -g3 -o client $(OBJS2) -pthread
+	$(CC) -g3 -o myhttpd $(OBJS1)	-pthread
+	$(CC) -g3 -o mycrawler $(OBJS2) -pthread
 
 	
 

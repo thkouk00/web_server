@@ -71,8 +71,8 @@ void* commands_client(void* nsock)
 				closedir(dir);
 				dup2(*command_sock, 0);
 				dup2(*command_sock, 1);
-				//ftiaxto katallila gia teliki paradosi
-				execl("/home/thanos/di/syspro/jobExecutor/jobExecutor","jobExecutor" ,"-d","/home/thanos/di/syspro/web_server/input_dirs","-w","2",NULL);
+				//jobExecutor -> create log file in /tmp before init
+				execl("../jobExecutor/jobExecutor","jobExecutor" ,"-d","input_dirs","-w","2",NULL);
 				printf("ERROR exec\n");
 				exit(1);
 			}
