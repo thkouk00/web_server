@@ -45,4 +45,4 @@ commands_client.o:	commands_client.c
 	$(CC) $(FLAGS) commands_client.c
 
 clean:
-	rm -f $(OBJS1) $(OBJS2) httpd client
+	rm -f $(OBJS1) $(OBJS2) myhttpd mycrawler input_dirs

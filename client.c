@@ -83,9 +83,9 @@ int main(int argc, char* argv[])
 		}
 
 	}
-	printf("Host:%s\n", host_or_IP);
-	printf("URL %s\n", starting_URL);
-	printf("Dir %s\n", save_dir);
+	// printf("Host:%s\n", host_or_IP);
+	// printf("URL %s\n", starting_URL);
+	// printf("Dir %s\n", save_dir);
 	
 	int i, sock, c_sock, sockopt_val = 1, command_sock;
 	socklen_t serverlen;
@@ -98,7 +98,6 @@ int main(int argc, char* argv[])
 	DIR* dir = opendir(save_dir);
 	struct dirent *de;
 	//check if dir exists , if not create directory
-	//ftiaxnw meta na kanei purge
 	if (dir)
 	{
 		//check code
@@ -146,10 +145,7 @@ int main(int argc, char* argv[])
 	
 	//insert url in queue
 	push_c(&queue, &checked_urls, starting_URL, NULL);
-	// push_c(&checked_urls, starting_URL,NULL);
 	count = 1;
-	// print_c(&queue);
-	// printf("PERSASASAS\n");
 	if (nthr == 0)
 		nthr = 2;
 	tid = malloc(sizeof(pthread_t)*nthr);
@@ -194,7 +190,7 @@ int main(int argc, char* argv[])
 	free(starting_URL);
 	freelist_c(&queue);
 	freelist_c(&checked_urls);
-	//na to tsekarw mipos to valw
+	
 	// close(sock); /* Close socket and exit */
 }
 

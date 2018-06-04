@@ -33,7 +33,6 @@ void* worker_client(void* args)
 
 		pthread_mutex_lock(&mtx);
 		
-		// printf("Thread %ld\n", pthread_self());
 		//wait until queue has link to extract
 		while (urls_left(&queue) == 0)
 		{
@@ -43,7 +42,6 @@ void* worker_client(void* args)
 				pthread_cond_broadcast(&cond_nonempty);
 				pthread_mutex_unlock(&mtx);
 				// shutdown(sockfd, SHUT_RDWR);
-				// pthread_exit((void *)1);
 				exit_flag = 1;
 				break;
 			}
@@ -52,15 +50,12 @@ void* worker_client(void* args)
 		if (exit_flag)
 		{
 			close(sockfd);
-			// pthread_mutex_unlock(&mtx);
 			break;
 		}
 		
 		working_threads++;
 		//pop head from queue 
 		pop_head_c(&queue, &cur_url);
-		printf("POP %s\n", cur_url);
-		// print_c(&queue);
 		count--;
 		//must free cur_url after i am done
 		pthread_mutex_unlock(&mtx);
@@ -117,7 +112,7 @@ void* worker_client(void* args)
 			continue;
 
 		//apo header thelw na dw code kai length , code gia na dw an tha to dextw kai length gia malloc
-		//Newbuf-> pairnei ta extra poy phre o buf prin kai ta upoloipa apo th selida
+		//body-> pairnei ta extra poy phre o buf prin kai ta upoloipa apo th selida
 		//kai ta apothikeyei sto arxeio poy prepei na ftiaxtei
 		char *body = malloc(sizeof(char)*(response_len+1));
 		memset(body, 0, response_len+1);
@@ -127,9 +122,6 @@ void* worker_client(void* args)
 		total_data = strlen(start_of_body);
 		while ((data_read = read(sockfd,&body[total_data],(response_len+1)-total_data)) > 0)
 			total_data += data_read;
-		// printf("TOTAL_DATA %d \n", total_data);
-		// printf("-------------------------\n");
-		// printf("Code %d , len %d\n", code,response_len);
 		shutdown(sockfd, SHUT_RD);
 		//extract links and puth them to queue
 		const char needle[] = "<a href=";
@@ -151,8 +143,6 @@ void* worker_client(void* args)
 	        //edw to link einai etoimo , push it in queue
 	        pthread_mutex_lock(&mtx);
 	       	push_c(&queue, &checked_urls, link, cur_url);
-	       	printf("PUSH %s\n", link);
-	       	printf("Left %d\n", urls_left(&queue));
 	        //**no need for this i think , check it later**
 	        // count++;
 	        // if (urls_left(&queue)==0)
@@ -192,13 +182,11 @@ void* worker_client(void* args)
 		if (fp == NULL)
 			perror("fopen Error\n");
 		// //grapse sto arxeio eite th vrhke th selida eite oxi
-		// printf("Path %s.\n", path_to_file);
 		if (code > 0)
 			fwrite(body, 1, strlen(body), fp);
 		// close file
 		fclose(fp);
 		//server closes sockfd
-		//extra 3/6
 		close(sockfd); /* Close socket and exit */
 		free(body);
 		free(dir_path);

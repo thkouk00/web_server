@@ -106,7 +106,6 @@ int main(int argc , char* argv[])
 	// printf("Listening for connections to port %d and commands from port %d\n", port,command_port);
 	
 	// struct for passing arguments
-	//useless i think , check it later
 	struct arg_struct arg_strct;
 	arg_strct.sock = sock;
 	arg_strct.c_sock = c_sock;

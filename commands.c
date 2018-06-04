@@ -5,6 +5,7 @@ void* commands(void* nsock)
 	int *command_sock = nsock;
 	char buf[256];
 	memset(buf, 0, sizeof(buf));
+	memset(buf, 0, sizeof(buf));
 	printf("Command port printing\n");
 	//response through socket not stdout
 	while (read(*command_sock, buf, 256)>0)
@@ -41,10 +42,8 @@ void* commands(void* nsock)
 			break;
 		}
 
-		// printf("Commandport received : %s\n", buf);
 		memset(buf, 0, 256);
 	}
-	// printf("Epistrefw main\n");
-	// write(*command_sock,"Response from server",strlen("Response from server"));
+	
 	return (void*)1;
 }

@@ -108,6 +108,20 @@ void push_c(url_queue** head, url_queue** queue2,char* url, char* cur_url)
 		memset(cur->url, 0, strlen(new_url)+1);
 		memcpy(cur->url,new_url,strlen(new_url));
 	}
+	else if (!strncmp(new_url, "http:", 5))
+	{
+		int tmp_count = 0;
+		while (tmp_count != 3)
+		{
+			if (*new_url == '/')
+				tmp_count++;
+			new_url++;
+		}
+		cur->url = malloc(sizeof(char)*(strlen(new_url)+2));
+		memset(cur->url, 0, strlen(new_url)+2);
+		cur->url[0] = '/';
+		memcpy(&cur->url[1],new_url,strlen(new_url));	
+	}
 	else		//else concat url with current dir
 	{
 		if (!first_push)

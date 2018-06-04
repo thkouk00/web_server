@@ -24,8 +24,6 @@ void* producer(void* args)
 			if (shtdwn_flag)
 			{
 				pthread_mutex_unlock(&mtx);
-				// pthread_exit((void*)1);
-				//htan to exit kai doyleue ok
 				return (void*)1;
 			}
 			else
@@ -36,7 +34,7 @@ void* producer(void* args)
 		// insert fd to buffer
 		push(&buffer,newsock);
 		count++;
-		printf("***New insertion %d , count %d***\n", newsock,count);
+		// printf("***New insertion %d , count %d***\n", newsock,count);
 		// printf("From thread %ld\n", pthread_self());
 		pthread_cond_broadcast(&cond_nonempty);
 		pthread_mutex_unlock(&mtx);
